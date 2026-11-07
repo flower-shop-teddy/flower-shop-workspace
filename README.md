@@ -257,9 +257,17 @@ git commit -am "build: bắt đầu phát triển 0.2.0" && git push
 
 ### Chạy image đã release
 
+Chạy cả hệ thống từ image trên GHCR, không cần code, không cần build (image đang public nên không phải đăng nhập):
+
 ```bash
-docker run --rm -p 8761:8761 ghcr.io/flower-shop-teddy/flower-shop-discovery-server:0.1.0
+docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> catalog -> gateway
+docker compose -f docker-compose.app.yml logs -f        # xem log
+docker compose -f docker-compose.app.yml down           # tắt theo thứ tự ngược (dữ liệu DB vẫn giữ trong volume)
 ```
+
+- Thứ tự bật do `depends_on` + `condition: service_healthy` quyết định: service chỉ bật khi service nó cần đã healthy.
+- Chạy version khác: đặt `DISCOVERY_VERSION`, `CATALOG_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định `0.1.0`).
+- Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
 
 ## 12. Giai đoạn tiếp theo
 
