@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Git hook: chặn commit có message sai Conventional Commits NGAY lúc git commit.
+# Cài cho mọi repo bằng ./install-hooks.sh ở workspace (clone-all.sh tự gọi).
+# Cùng luật với workflow commit-lint.yml ở repo flower-shop-platform.
+#
+#   <type>(<scope>)?: <mô tả>
+#   feat(catalog): thêm API tìm hoa theo giá
+#   fix(gateway): sửa lỗi mất header X-Correlation-Id
+#   feat(api)!: đổi format response        ("!" = phá vỡ tương thích)
+
+subject=$(grep -v '^#' "$1" | head -n 1)
+
+# Message do git tự tạo: merge, revert, fixup/squash khi rebase
+case "$subject" in
+  "Merge "*|'Revert "'*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+PATTERN='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._-]+\))?!?: [^ ].{0,98}$'
+if printf '%s' "$subject" | grep -Eq "$PATTERN"; then
+  exit 0
+fi
+
+cat >&2 <<MSG
+✖ Commit message sai định dạng Conventional Commits:
+    "$subject"
+
+  Đúng:  <type>(<scope>): <mô tả>      (scope tùy chọn, chữ thường)
+    feat      thêm tính năng            feat(catalog): thêm API tìm hoa theo giá
+    fix       sửa lỗi                   fix(gateway): sửa lỗi mất header X-Correlation-Id
+    docs      chỉ sửa tài liệu          docs: cập nhật hướng dẫn release
+    refactor  sửa code, không đổi hành vi
+    test      thêm/sửa test
+    perf      tăng hiệu năng
+    style     format code, không đổi logic
+    build     build, pom.xml, version, dependency
+    ci        GitHub Actions
+    chore     việc vặt khác
+    revert    hoàn tác commit trước
+  Thêm "!" nếu phá vỡ tương thích:  feat(api)!: đổi format response
+  Mô tả tối đa 100 ký tự. Message của bạn vẫn được giữ trong .git/COMMIT_EDITMSG.
+MSG
+exit 1

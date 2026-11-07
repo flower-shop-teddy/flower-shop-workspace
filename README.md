@@ -18,7 +18,10 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 ```
 flower-shop/                 ← repo flower-shop-workspace
 ├── pom.xml                  Aggregator CHỈ cho local: build mọi repo một lần, mở chung trong IntelliJ
-├── clone-all.sh             Clone các repo bên dưới vào đúng chỗ
+├── clone-all.sh             Clone các repo bên dưới vào đúng chỗ (+ cài hook commit)
+├── install-hooks.sh         Bật hook kiểm tra commit message cho mọi repo
+├── set-platform-version.sh  Đổi version platform + parent của mọi service cùng lúc
+├── githooks/commit-msg      Hook Conventional Commits
 ├── run-local.sh             Chạy cả hệ thống bằng một lệnh
 ├── docker-compose.yml       Hạ tầng local (Postgres)
 ├── .env.example             Mẫu biến môi trường -> copy thành .env
@@ -183,6 +186,81 @@ mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers t�
 - Khi build một repo service đứng riêng (CI, máy khác), parent được lấy từ `~/.m2` hoặc GitHub Packages.
 - Push lên `dev` của `flower-shop-platform` sẽ tự publish parent + `common-lib` lên GitHub Packages (workflow `publish.yml`).
 
-## 10. Giai đoạn tiếp theo
+## 10. Quy tắc commit (Conventional Commits)
+
+```
+<type>(<scope>): <mô tả>
+```
+
+| type | Khi nào | Ví dụ |
+|---|---|---|
+| `feat` | Thêm tính năng | `feat(catalog): thêm API tìm hoa theo giá` |
+| `fix` | Sửa lỗi | `fix(gateway): sửa lỗi mất header X-Correlation-Id` |
+| `docs` | Chỉ sửa tài liệu | `docs: cập nhật hướng dẫn release` |
+| `refactor` | Sửa code, không đổi hành vi | `refactor(catalog): tách FlowerMapper` |
+| `test` | Thêm/sửa test | `test(catalog): thêm test sửa đồng thời` |
+| `perf` / `style` | Hiệu năng / format code | |
+| `build` | pom.xml, version, dependency | `build: nâng platform lên 0.2.0-SNAPSHOT` |
+| `ci` | GitHub Actions | `ci: thêm bước build Docker image` |
+| `chore` / `revert` | Việc vặt / hoàn tác | |
+
+- `scope` (tùy chọn, chữ thường) là phần bị ảnh hưởng: `catalog`, `gateway`, `common`...
+- Thêm `!` nếu phá vỡ tương thích: `feat(api)!: đổi format response`.
+- **Chặn ở 2 lớp:** hook `githooks/commit-msg` chặn ngay lúc `git commit` (`./install-hooks.sh` hoặc `clone-all.sh` tự cài), và workflow `commit-lint` báo đỏ trên GitHub.
+- `dev` cấm force push, nên commit sai đã push lên `dev` **không sửa được**. Vì vậy bắt buộc phải cài hook.
+
+## 11. CI/CD và release
+
+### Luồng tổng quát
+
+```
+ push dev ──► CI: build + test (ci / build), commit-lint
+          └─► (platform) publish X.Y.Z-SNAPSHOT lên GitHub Packages
+
+ PR dev → production ──► only-from-dev, ci / build, release-check (chạy thử release, không publish)
+                         └─ cả 3 xanh mới Merge được (ruleset)
+
+ merge ──► push production ──► release:
+            platform: publish flower-shop-parent + common-lib X.Y.Z lên GitHub Packages
+            service : push Docker image ghcr.io/flower-shop-teddy/<repo>:X.Y.Z
+            cả hai  : tạo tag vX.Y.Z + GitHub Release
+```
+
+CI dùng chung nằm ở repo **flower-shop-platform** (`.github/workflows/maven-ci.yml`, `service-release.yml`, `commit-lint.yml`, `.github/actions/setup-maven`). Các service chỉ có vài dòng `uses: ...` gọi tới đó.
+
+### Quy ước version
+
+1. Trên `dev` mọi version là `X.Y.Z-SNAPSHOT`. Service trỏ parent tới **đúng version SNAPSHOT hiện tại** của platform.
+2. Version release **không được commit** (production chỉ nhận PR). CI bỏ `-SNAPSHOT` ngay trong máy build, publish, rồi gắn tag `vX.Y.Z`. Commit tại tag vẫn ghi `-SNAPSHOT` trong pom, đó là chủ ý.
+3. Release service sẽ tự đổi parent `X.Y.Z-SNAPSHOT` thành `X.Y.Z`, nên **platform phải release trước**.
+4. Release xong phải **tăng version trên dev**, nếu không lần release sau bị chặn ("vX.Y.Z đã release").
+5. Thứ tự: platform → discovery-server → catalog-service → api-gateway.
+
+### Các bước release
+
+```bash
+# 1. Platform
+gh pr create -R flower-shop-teddy/flower-shop-platform -B production -H dev --fill
+#    đợi check xanh rồi Merge (chọn "Create a merge commit")
+
+# 2. Từng service
+gh pr create -R flower-shop-teddy/flower-shop-catalog-service -B production -H dev --fill
+#    Merge → ghcr.io/flower-shop-teddy/flower-shop-catalog-service:X.Y.Z
+
+# 3. Tăng version trên dev cho vòng sau (chọn version theo SemVer)
+./set-platform-version.sh 0.2.0-SNAPSHOT        # platform + parent ở 3 service (chỉ khi platform có thay đổi)
+cd catalog-service && mvn -q versions:set -DnewVersion=0.2.0-SNAPSHOT -DgenerateBackupPoms=false
+git commit -am "build: bắt đầu phát triển 0.2.0" && git push
+```
+
+**SemVer:** sửa lỗi → `0.1.1`; thêm tính năng tương thích → `0.2.0`; phá vỡ tương thích → `1.0.0`.
+
+### Chạy image đã release
+
+```bash
+docker run --rm -p 8761:8761 ghcr.io/flower-shop-teddy/flower-shop-discovery-server:0.1.0
+```
+
+## 12. Giai đoạn tiếp theo
 
 **Giai đoạn 2:** thêm `inventory-service` (tồn kho theo lô, xuất FEFO) và `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.

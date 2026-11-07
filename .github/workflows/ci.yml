@@ -1,0 +1,14 @@
+# Repo workspace không có code Java, chỉ kiểm tra commit message.
+name: CI
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  commit-lint:
+    permissions:
+      contents: read
+    uses: flower-shop-teddy/flower-shop-platform/.github/workflows/commit-lint.yml@dev

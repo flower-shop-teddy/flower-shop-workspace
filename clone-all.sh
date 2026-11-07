@@ -44,4 +44,7 @@ for entry in "${REPOS[@]}"; do
   use_gh_credential "$dir"
 done
 
+# Bật hook kiểm tra commit message cho mọi repo
+./install-hooks.sh
+
 echo "✔ Xong. Tiếp theo: cp .env.example .env (nếu chưa có) rồi ./run-local.sh"
