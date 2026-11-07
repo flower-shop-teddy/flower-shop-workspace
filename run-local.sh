@@ -5,7 +5,7 @@
 # Tùy chọn:
 #   ./run-local.sh --no-build   bỏ qua bước build (khi code không đổi, khởi động nhanh hơn)
 #
-# Lưu ý: dù chạy bằng một lệnh, đây VẪN là 3 process riêng nói chuyện với nhau qua HTTP + Eureka,
+# Lưu ý: dù chạy bằng một lệnh, đây VẪN là 4 process riêng nói chuyện với nhau qua HTTP + Eureka,
 # không phải một monolith. Script chỉ tự động hóa việc bật chúng đúng thứ tự.
 
 set -euo pipefail
@@ -35,7 +35,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 [ -f .env ] || { echo "✖ Thiếu file .env, chạy: cp .env.example .env" >&2; exit 1; }
 # Mỗi thư mục dưới đây là một repo git riêng
-for repo in platform discovery-server api-gateway catalog-service; do
+for repo in platform discovery-server api-gateway catalog-service customer-service; do
   [ -f "$repo/pom.xml" ] || { echo "✖ Thiếu repo $repo/, chạy: ./clone-all.sh" >&2; exit 1; }
 done
 echo "▶ Bật Postgres..."
@@ -53,9 +53,9 @@ cleanup() {
   trap - EXIT INT TERM   # tránh chạy cleanup 2 lần
   echo
   echo "▶ Đang tắt service..."
-  # Tắt theo thứ tự NGƯỢC lúc bật: gateway/catalog trước, discovery sau cùng.
+  # Tắt theo thứ tự NGƯỢC lúc bật: gateway/catalog/customer trước, discovery sau cùng.
   # Nếu tắt discovery cùng lúc, các service kia không hủy đăng ký được với Eureka -> log báo lỗi.
-  # PIDS[0] = discovery, phần còn lại = catalog, gateway.
+  # PIDS[0] = discovery, phần còn lại = catalog, customer, gateway.
   if [ ${#PIDS[@]} -gt 1 ]; then
     kill "${PIDS[@]:1}" 2>/dev/null || true
     wait "${PIDS[@]:1}" 2>/dev/null || true
@@ -94,20 +94,25 @@ start discovery-server 8761
 wait_http http://localhost:8761/actuator/health "discovery-server" 60
 
 start catalog-service 8081 --spring.profiles.active=local
+start customer-service 8082 --spring.profiles.active=local
 start api-gateway 8080
 wait_http http://localhost:8081/actuator/health "catalog-service" 90
+wait_http http://localhost:8082/actuator/health "customer-service" 90
 wait_http http://localhost:8080/actuator/health "api-gateway" 90
 
-# Service đã lên nhưng gateway cần thêm thời gian để thấy catalog trên Eureka.
-echo "▶ Đợi gateway nhận ra catalog-service qua Eureka (thường ~30s)..."
+# Service đã lên nhưng gateway cần thêm thời gian để thấy catalog/customer trên Eureka.
+echo "▶ Đợi gateway nhận ra catalog-service và customer-service qua Eureka (thường ~30s)..."
 wait_http http://localhost:8080/api/v1/flowers "route gateway -> catalog" 90
+wait_http http://localhost:8080/api/v1/customers "route gateway -> customer" 90
 
 cat <<EOF
 
 ✔ Hệ thống đã sẵn sàng
   API (qua gateway): http://localhost:8080/api/v1/flowers
+                     http://localhost:8080/api/v1/customers
   Eureka:            http://localhost:8761
-  Swagger:           http://localhost:8081/swagger-ui.html
+  Swagger:           http://localhost:8081/swagger-ui.html (catalog)
+                     http://localhost:8082/swagger-ui.html (customer)
   Xem log:           tail -f $LOG_DIR/*.log
 
 Ctrl+C để tắt.

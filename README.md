@@ -14,6 +14,7 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 | `flower-shop-discovery-server` | `discovery-server/` | Eureka :8761 |
 | `flower-shop-api-gateway` | `api-gateway/` | Cửa vào duy nhất :8080 |
 | `flower-shop-catalog-service` | `catalog-service/` | Danh mục hoa :8081 |
+| `flower-shop-customer-service` | `customer-service/` | Khách hàng + sổ địa chỉ :8082 |
 
 ```
 flower-shop/                 ← repo flower-shop-workspace
@@ -31,7 +32,7 @@ flower-shop/                 ← repo flower-shop-workspace
 │   └── common-lib/          Response chuẩn, mã lỗi, xử lý lỗi, correlation id, che dữ liệu
 ├── discovery-server/        ← repo riêng
 ├── api-gateway/             ← repo riêng
-└── catalog-service/         ← repo riêng
+├── catalog-service/         ← repo riêng
     └── src/main/java/com/flowershop/catalog/
         ├── config/          Cấu hình audit (created_by, updated_by)
         ├── domain/          Entity + enum
@@ -41,6 +42,7 @@ flower-shop/                 ← repo flower-shop-workspace
         ├── repository/
         ├── service/         Logic nghiệp vụ + transaction
         └── web/             Controller /api/v1/...
+└── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
 ```
 
 ## 2. Chuẩn ngân hàng đã áp dụng ở giai đoạn này
@@ -62,6 +64,11 @@ flower-shop/                 ← repo flower-shop-workspace
 | Swagger tắt mặc định, chỉ bật ở local | `application.yml` / `application-local.yml` |
 | Test với DB thật, không dùng H2 | `FlowerApiIntegrationTest` (Testcontainers) |
 | Lưu thời gian theo UTC | `hibernate.jdbc.time_zone: UTC`, `TIMESTAMPTZ` |
+| PII: danh sách che SĐT/email, log không ghi SĐT đầy đủ | `CustomerSummaryResponse`, `CustomerMapper.maskPhone` |
+| Tìm theo SĐT bằng so khớp chính xác, không `LIKE` (chống dò dữ liệu) | `CustomerRepository.findByStatusAndPhone` |
+| Đọc/sửa tài nguyên con luôn kèm id chủ sở hữu, sai chủ trả 404 | `DeliveryAddressRepository.findByIdAndCustomerId` |
+| Khóa dòng (`SELECT ... FOR UPDATE`) khi luật nghiệp vụ phụ thuộc nhiều dòng | `CustomerRepository.findByIdForUpdate` |
+| Mã nghiệp vụ (kiểu số CIF) tách khỏi id kỹ thuật | `customer_code` `KH_CN_0000001`, `customer_code_seq` |
 
 ## 3. Cài đặt
 
@@ -109,13 +116,13 @@ mvn clean install -DskipTests     # lần đầu tải thư viện sẽ hơi lâ
 **Terminal (cả VSCode):**
 
 ```bash
-./run-local.sh              # bật Postgres -> build -> discovery -> catalog + gateway, đợi tới khi gọi API được
+./run-local.sh              # bật Postgres -> build -> discovery -> catalog + customer + gateway, đợi tới khi gọi API được
 ./run-local.sh --no-build   # code không đổi thì bỏ qua build cho nhanh
-# Ctrl+C: tắt service theo thứ tự ngược (gateway/catalog trước, discovery sau). Log nằm trong logs/
+# Ctrl+C: tắt service theo thứ tự ngược (gateway/catalog/customer trước, discovery sau). Log nằm trong logs/
 ```
 
 **IntelliJ:** chọn cấu hình **All Services** ở góc trên bên phải rồi bấm Run hoặc Debug (file trong `.run/`).
-Compound bật 3 service cùng lúc. Eureka client tự thử lại nên vẫn chạy đúng, chỉ mất khoảng 30–40 giây để gateway thấy catalog.
+Compound bật 4 service cùng lúc. Eureka client tự thử lại nên vẫn chạy đúng, chỉ mất khoảng 30–40 giây để gateway thấy catalog và customer.
 
 ### Cách thủ công
 
@@ -124,10 +131,11 @@ Compound bật 3 service cùng lúc. Eureka client tự thử lại nên vẫn c
 1. `DiscoveryServerApplication`, đợi mở được http://localhost:8761
 2. `CatalogServiceApplication`, nhớ đặt **Active profiles: `local`** trong Run Configuration
 3. `ApiGatewayApplication`
+4. `CustomerServiceApplication`, cũng đặt **Active profiles: `local`**
 
-Sau 10–30 giây, trang Eureka sẽ hiện `CATALOG-SERVICE` và `API-GATEWAY`.
+Sau 10–30 giây, trang Eureka sẽ hiện `CATALOG-SERVICE`, `CUSTOMER-SERVICE` và `API-GATEWAY`.
 
-**Mẹo:** mở tab **Services** (Alt+8) trong IntelliJ để quản lý cả 3 service một chỗ.
+**Mẹo:** mở tab **Services** (Alt+8) trong IntelliJ để quản lý cả 4 service một chỗ.
 
 ## 5. Gọi thử API (qua gateway, cổng 8080)
 
@@ -152,11 +160,32 @@ curl -X PUT http://localhost:8080/api/v1/flowers/1 \
 curl -X DELETE http://localhost:8080/api/v1/flowers/1
 ```
 
+Khách hàng và sổ địa chỉ:
+
+```bash
+# Tạo khách hàng -> nhận customerCode dạng KH_CN_0000001
+curl -X POST http://localhost:8080/api/v1/customers \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"Nguyễn Thị Lan","phone":"0912345678","email":"lan@gmail.com","dateOfBirth":"1995-03-20"}'
+
+# Tìm theo SĐT (so khớp chính xác). Danh sách trả SĐT/email đã che
+curl "http://localhost:8080/api/v1/customers?phone=0912345678"
+
+# Thêm địa chỉ người nhận (địa chỉ đầu tiên tự thành mặc định)
+curl -X POST http://localhost:8080/api/v1/customers/1/addresses \
+  -H "Content-Type: application/json" \
+  -d '{"recipientName":"Trần Văn Bình","recipientPhone":"0987654321","addressLine":"12 Lý Thường Kiệt","ward":"Phường Cửa Nam","province":"Hà Nội"}'
+
+# Xem sổ địa chỉ / đặt địa chỉ 2 làm mặc định
+curl http://localhost:8080/api/v1/customers/1/addresses
+curl -X PUT http://localhost:8080/api/v1/customers/1/addresses/2/default
+```
+
 Thử gửi lại lệnh sửa với `"version":0` lần nữa: bạn sẽ nhận lỗi `COM-409-001` vì version đã tăng lên 1.
 
 Mỗi response có header `X-Correlation-Id`. Lấy mã đó tìm trong log của gateway và catalog-service sẽ thấy cùng một request.
 
-Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html
+Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog), http://localhost:8082/swagger-ui.html (customer)
 
 ## 6. Debug
 
@@ -167,6 +196,7 @@ Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html
 
 ```bash
 mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers tự bật Postgres)
+mvn -pl customer-service test
 ```
 
 ## 8. Lỗi thường gặp
@@ -174,10 +204,11 @@ mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers t�
 - `release version 21 not supported`: Maven đang chạy bằng JDK < 21, xem mục 3. Lưu ý `~/.mavenrc` có thể ghi đè `JAVA_HOME`.
 - Test báo `Could not find a valid Docker environment`: Docker Desktop chưa chạy, hoặc Testcontainers quá cũ so với Docker Engine (đã ghim `testcontainers.version` trong pom gốc).
 - `docker compose up` lỗi thiếu mật khẩu postgres: chưa tạo file `.env` từ `.env.example`.
-- `Could not resolve placeholder 'DB_URL'`: quên đặt profile `local` cho catalog-service.
+- `Could not resolve placeholder 'DB_URL'`: quên đặt profile `local` cho catalog-service / customer-service.
 - `Schema-validation: missing table [flower]`: Flyway chưa chạy hoặc kết nối nhầm database.
 - Sửa file `01-create-databases.sql` nhưng không thấy tác dụng: script chỉ chạy khi volume trống, cần `docker compose down -v` (sẽ XÓA dữ liệu local).
-- Gateway trả 503: catalog-service chưa đăng ký xong lên Eureka, đợi thêm vài giây.
+- `FATAL: database "customer_db" does not exist`: máy đã có volume Postgres từ trước nên script init không chạy lại. Chạy tay một lần: `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER"' < infra/postgres/init/02-create-customer-db.sql` (không cần xóa volume).
+- Gateway trả 503: service đích chưa đăng ký xong lên Eureka, đợi thêm vài giây.
 
 ## 9. Làm việc với nhiều repo
 
@@ -234,7 +265,7 @@ CI dùng chung nằm ở repo **flower-shop-platform** (`.github/workflows/maven
 2. Version release **không được commit** (production chỉ nhận PR). CI bỏ `-SNAPSHOT` ngay trong máy build, publish, rồi gắn tag `vX.Y.Z`. Commit tại tag vẫn ghi `-SNAPSHOT` trong pom, đó là chủ ý.
 3. Release service sẽ tự đổi parent `X.Y.Z-SNAPSHOT` thành `X.Y.Z`, nên **platform phải release trước**.
 4. Release xong phải **tăng version trên dev**, nếu không lần release sau bị chặn ("vX.Y.Z đã release").
-5. Thứ tự: platform → discovery-server → catalog-service → api-gateway.
+5. Thứ tự: platform → discovery-server → catalog-service → customer-service → api-gateway.
 
 ### Các bước release
 
@@ -248,7 +279,7 @@ gh pr create -R flower-shop-teddy/flower-shop-catalog-service -B production -H d
 #    Merge → ghcr.io/flower-shop-teddy/flower-shop-catalog-service:X.Y.Z
 
 # 3. Tăng version trên dev cho vòng sau (chọn version theo SemVer)
-./set-platform-version.sh 0.2.0-SNAPSHOT        # platform + parent ở 3 service (chỉ khi platform có thay đổi)
+./set-platform-version.sh 0.2.0-SNAPSHOT        # platform + parent ở 4 service (chỉ khi platform có thay đổi)
 cd catalog-service && mvn -q versions:set -DnewVersion=0.2.0-SNAPSHOT -DgenerateBackupPoms=false
 git commit -am "build: bắt đầu phát triển 0.2.0" && git push
 ```

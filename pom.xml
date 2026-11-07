@@ -21,5 +21,6 @@
         <module>discovery-server</module>
         <module>api-gateway</module>
         <module>catalog-service</module>
+        <module>customer-service</module>
     </modules>
 </project>

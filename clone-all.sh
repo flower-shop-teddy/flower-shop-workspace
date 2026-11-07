@@ -18,6 +18,7 @@ REPOS=(
   "discovery-server  flower-shop-discovery-server"
   "api-gateway       flower-shop-api-gateway"
   "catalog-service   flower-shop-catalog-service"
+  "customer-service  flower-shop-customer-service"
 )
 
 # Xác thực chỉ áp dụng cho một repo (không đổi ~/.gitconfig)
