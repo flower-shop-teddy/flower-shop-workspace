@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="1. DiscoveryServer" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.flowershop.discovery.DiscoveryServerApplication" />
+    <module name="discovery-server" />
+    <option name="VM_PARAMETERS" value="" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

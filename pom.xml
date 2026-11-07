@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Repo flower-shop-workspace. Đây CHỈ là aggregator cho môi trường dev local:
+         - mở thư mục này trong IntelliJ là thấy mọi repo như một project
+         - mvn install ở đây build tất cả theo đúng thứ tự (platform trước, service sau)
+         Không service nào kế thừa file này. Version thư viện nằm ở platform/pom.xml.
+         Các thư mục module bên dưới là repo git RIÊNG, lấy về bằng ./clone-all.sh -->
+
+    <groupId>com.flowershop</groupId>
+    <artifactId>flower-shop-workspace</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>flower-shop-workspace</name>
+
+    <modules>
+        <module>platform</module>
+        <module>discovery-server</module>
+        <module>api-gateway</module>
+        <module>catalog-service</module>
+    </modules>
+</project>

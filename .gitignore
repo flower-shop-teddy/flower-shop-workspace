@@ -1,0 +1,13 @@
+target/
+.idea/
+*.iml
+.env
+*.log
+logs/
+
+# Các repo service nằm trong workspace nhưng là repo git RIÊNG (lấy bằng ./clone-all.sh)
+/platform/
+/discovery-server/
+/api-gateway/
+/catalog-service/
+.DS_Store
