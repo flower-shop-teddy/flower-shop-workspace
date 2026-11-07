@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 # Đường dẫn tương đối: git chạy hook từ thư mục gốc của từng repo
 git config core.hooksPath githooks
 echo "✔ workspace"
-for dir in platform discovery-server api-gateway catalog-service customer-service; do
+for dir in platform discovery-server api-gateway catalog-service customer-service identity-service; do
   if [ -d "$dir/.git" ]; then
     git -C "$dir" config core.hooksPath ../githooks
     echo "✔ $dir"

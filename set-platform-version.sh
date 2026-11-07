@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 NEW=${1:?Cách dùng: ./set-platform-version.sh <version>, ví dụ 0.2.0-SNAPSHOT}
-SERVICES=(discovery-server api-gateway catalog-service customer-service)
+SERVICES=(discovery-server api-gateway catalog-service customer-service identity-service)
 
 JAVA_HOME="$(/usr/libexec/java_home -v 21)"; export JAVA_HOME
 

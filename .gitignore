@@ -11,5 +11,6 @@ logs/
 /api-gateway/
 /catalog-service/
 /customer-service/
+/identity-service/
 .DS_Store
 .claude/settings.local.json

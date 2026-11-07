@@ -15,6 +15,7 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 | `flower-shop-api-gateway` | `api-gateway/` | Cửa vào duy nhất :8080 |
 | `flower-shop-catalog-service` | `catalog-service/` | Danh mục hoa :8081 |
 | `flower-shop-customer-service` | `customer-service/` | Khách hàng + sổ địa chỉ :8082 |
+| `flower-shop-identity-service` | `identity-service/` | Đăng nhập + phân quyền (JWT, RBAC) :8083 |
 
 ```
 flower-shop/                 ← repo flower-shop-workspace
@@ -30,7 +31,7 @@ flower-shop/                 ← repo flower-shop-workspace
 ├── infra/postgres/init/     Tạo database + user riêng cho từng service
 ├── platform/                ← repo riêng (bị .gitignore của workspace bỏ qua)
 │   ├── pom.xml              flower-shop-parent: version thư viện, plugin dùng chung
-│   └── common-lib/          Response chuẩn, mã lỗi, xử lý lỗi, correlation id, che dữ liệu
+│   └── common-lib/          Response chuẩn, mã lỗi, xử lý lỗi, correlation id, che dữ liệu, mảnh security dùng chung
 ├── discovery-server/        ← repo riêng
 ├── api-gateway/             ← repo riêng
 ├── catalog-service/         ← repo riêng
@@ -43,7 +44,8 @@ flower-shop/                 ← repo flower-shop-workspace
         ├── repository/
         ├── service/         Logic nghiệp vụ + transaction
         └── web/             Controller /api/v1/...
-└── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
+├── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
+└── identity-service/        ← repo riêng: tài khoản, role/permission, ký JWT, JWKS (com.flowershop.identity)
 ```
 
 ## 2. Chuẩn ngân hàng đã áp dụng ở giai đoạn này
@@ -70,6 +72,23 @@ flower-shop/                 ← repo flower-shop-workspace
 | Đọc/sửa tài nguyên con luôn kèm id chủ sở hữu, sai chủ trả 404 | `DeliveryAddressRepository.findByIdAndCustomerId` |
 | Khóa dòng (`SELECT ... FOR UPDATE`) khi luật nghiệp vụ phụ thuộc nhiều dòng | `CustomerRepository.findByIdForUpdate` |
 | Mã nghiệp vụ (kiểu số CIF) tách khỏi id kỹ thuật | `customer_code` `KH_CN_0000001`, `customer_code_seq` |
+
+### Đăng nhập và phân quyền
+
+Chi tiết và lý do từng quyết định: [identity-service/README.md](identity-service/README.md).
+
+| Nguyên tắc | Ở đâu trong code |
+|---|---|
+| Một service riêng giữ tài khoản + ký token; service khác chỉ kiểm tra | `identity-service`, `JwtKeyService` |
+| JWT ký RS256 (khóa bất đối xứng), public key công khai qua JWKS, có `kid` để xoay khóa | `/.well-known/jwks.json`, `TokenService` |
+| Access token ngắn hạn (15'), refresh token opaque lưu hash, xoay vòng + phát hiện dùng lại | `RefreshTokenService`, `AuthService.doRefresh` |
+| RBAC user → role → permission; code chỉ kiểm tra permission | `V2__seed_roles_permissions.sql`, `@PreAuthorize("hasAuthority('flower:write')")` |
+| Kiểm tra 2 lớp (zero trust): gateway + từng service tự kiểm tra lại JWT | `api-gateway/.../SecurityConfig`, `ApiSecurity.configure` |
+| Chặn quyền ở tầng URL trước khi validate body (không lộ luật validate cho người không có quyền) | `SecurityConfig` của catalog/customer |
+| Khách chỉ dùng API `/me`, id lấy từ token | `MyProfileController`, `CurrentUser.requireCustomerId` |
+| Sai user/sai mật khẩu cùng một mã lỗi; khóa sau 5 lần sai; bộ đếm không bị rollback | `AuthService.doLogin` |
+| Nhật ký bảo mật chỉ thêm, có IP + correlation id; `created_by` = `sub` của token | `auth_event`, `JwtAuditorAware` |
+| Đăng ký khách trải trên 2 service: saga + bù trừ | `RegistrationService` |
 
 ## 3. Cài đặt
 
@@ -117,13 +136,13 @@ mvn clean install -DskipTests     # lần đầu tải thư viện sẽ hơi lâ
 **Terminal (cả VSCode):**
 
 ```bash
-./run-local.sh              # bật Postgres -> build -> discovery -> catalog + customer + gateway, đợi tới khi gọi API được
+./run-local.sh              # bật Postgres -> build -> discovery -> identity + catalog + customer + gateway, đợi tới khi gọi API được
 ./run-local.sh --no-build   # code không đổi thì bỏ qua build cho nhanh
 # Ctrl+C: tắt service theo thứ tự ngược (gateway/catalog/customer trước, discovery sau). Log nằm trong logs/
 ```
 
 **IntelliJ:** chọn cấu hình **All Services** ở góc trên bên phải rồi bấm Run hoặc Debug (file trong `.run/`).
-Compound bật 4 service cùng lúc. Eureka client tự thử lại nên vẫn chạy đúng, chỉ mất khoảng 30–40 giây để gateway thấy catalog và customer.
+Compound bật 5 service cùng lúc. Eureka client tự thử lại nên vẫn chạy đúng, chỉ mất khoảng 30–40 giây để gateway thấy catalog và customer.
 
 ### Cách thủ công
 
@@ -133,60 +152,106 @@ Compound bật 4 service cùng lúc. Eureka client tự thử lại nên vẫn c
 2. `CatalogServiceApplication`, nhớ đặt **Active profiles: `local`** trong Run Configuration
 3. `ApiGatewayApplication`
 4. `CustomerServiceApplication`, cũng đặt **Active profiles: `local`**
+5. `IdentityServiceApplication`, cũng đặt **Active profiles: `local`**
 
-Sau 10–30 giây, trang Eureka sẽ hiện `CATALOG-SERVICE`, `CUSTOMER-SERVICE` và `API-GATEWAY`.
+Sau 10–30 giây, trang Eureka sẽ hiện `CATALOG-SERVICE`, `CUSTOMER-SERVICE`, `IDENTITY-SERVICE` và `API-GATEWAY`.
 
-**Mẹo:** mở tab **Services** (Alt+8) trong IntelliJ để quản lý cả 4 service một chỗ.
+**Mẹo:** mở tab **Services** (Alt+8) trong IntelliJ để quản lý cả 5 service một chỗ.
 
 ## 5. Gọi thử API (qua gateway, cổng 8080)
 
+Xem danh mục hoa không cần đăng nhập, mọi API còn lại cần `Authorization: Bearer <accessToken>`. Cần `jq` (`brew install jq`).
+
+**Đăng nhập ADMIN** (profile local tự tạo `admin` / `FlowerShop2026`, lần đầu bị buộc đổi mật khẩu):
+
 ```bash
-# Tạo hoa
-curl -i -X POST http://localhost:8080/api/v1/flowers \
+# Lần đầu: token chưa có quyền gì, chỉ dùng để đổi mật khẩu
+T=$(curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"loginId":"admin","password":"FlowerShop2026"}' | jq -r .data.accessToken)
+curl -X POST http://localhost:8080/api/v1/auth/change-password -H "Authorization: Bearer $T" \
+  -H "Content-Type: application/json" -d '{"currentPassword":"FlowerShop2026","newPassword":"QuanTri2026x"}'
+
+# Đăng nhập lại: token có đủ quyền ADMIN (sống 15 phút, hết hạn thì gọi /refresh hoặc đăng nhập lại)
+export TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"loginId":"admin","password":"QuanTri2026x"}' | jq -r .data.accessToken)
+
+# Xem bên trong token (phần giữa của JWT là JSON base64): sub, roles, perms, exp...
+curl -s http://localhost:8080/api/v1/auth/me -H "Authorization: Bearer $TOKEN"
+```
+
+Mỗi lần restart identity-service ở local, khóa ký được sinh lại nên token cũ mất hiệu lực: đăng nhập lại. Mật khẩu đã đổi vẫn giữ (nằm trong DB).
+
+**Hoa:**
+
+```bash
+# Tạo hoa (cần flower:write)
+curl -i -X POST http://localhost:8080/api/v1/flowers -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"sku":"ROSE-RED-10","name":"Bó hồng đỏ 10 bông","category":"ROSE","unitPrice":350000,"currency":"VND"}'
 
-# Danh sách
+# Danh sách / chi tiết: public
 curl "http://localhost:8080/api/v1/flowers?page=0&size=20"
-
-# Xem chi tiết
 curl http://localhost:8080/api/v1/flowers/1
 
 # Sửa (phải gửi kèm version vừa đọc được)
-curl -X PUT http://localhost:8080/api/v1/flowers/1 \
+curl -X PUT http://localhost:8080/api/v1/flowers/1 -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Bó hồng đỏ 12 bông","category":"ROSE","unitPrice":400000,"version":0}'
 
 # Ngừng kinh doanh
-curl -X DELETE http://localhost:8080/api/v1/flowers/1
+curl -X DELETE http://localhost:8080/api/v1/flowers/1 -H "Authorization: Bearer $TOKEN"
 ```
 
-Khách hàng và sổ địa chỉ:
+**Khách hàng (API nhân viên):**
 
 ```bash
 # Tạo khách hàng -> nhận customerCode dạng KH_CN_0000001
-curl -X POST http://localhost:8080/api/v1/customers \
+curl -X POST http://localhost:8080/api/v1/customers -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"fullName":"Nguyễn Thị Lan","phone":"0912345678","email":"lan@gmail.com","dateOfBirth":"1995-03-20"}'
 
 # Tìm theo SĐT (so khớp chính xác). Danh sách trả SĐT/email đã che
-curl "http://localhost:8080/api/v1/customers?phone=0912345678"
+curl "http://localhost:8080/api/v1/customers?phone=0912345678" -H "Authorization: Bearer $TOKEN"
 
 # Thêm địa chỉ người nhận (địa chỉ đầu tiên tự thành mặc định)
-curl -X POST http://localhost:8080/api/v1/customers/1/addresses \
+curl -X POST http://localhost:8080/api/v1/customers/1/addresses -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"recipientName":"Trần Văn Bình","recipientPhone":"0987654321","addressLine":"12 Lý Thường Kiệt","ward":"Phường Cửa Nam","province":"Hà Nội"}'
 
 # Xem sổ địa chỉ / đặt địa chỉ 2 làm mặc định
-curl http://localhost:8080/api/v1/customers/1/addresses
-curl -X PUT http://localhost:8080/api/v1/customers/1/addresses/2/default
+curl http://localhost:8080/api/v1/customers/1/addresses -H "Authorization: Bearer $TOKEN"
+curl -X PUT http://localhost:8080/api/v1/customers/1/addresses/2/default -H "Authorization: Bearer $TOKEN"
 ```
+
+**Khách tự đăng ký và dùng API `/me`:**
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register -H "Content-Type: application/json" \
+  -d '{"phone":"0901234567","password":"KhachHang1","fullName":"Lê Minh Anh","dateOfBirth":"1998-07-01"}'
+
+CT=$(curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"loginId":"0901234567","password":"KhachHang1"}' | jq -r .data.accessToken)
+
+curl http://localhost:8080/api/v1/customers/me -H "Authorization: Bearer $CT"            # 200: hồ sơ của mình
+curl http://localhost:8080/api/v1/customers/me/addresses -H "Authorization: Bearer $CT"
+curl http://localhost:8080/api/v1/customers/1 -H "Authorization: Bearer $CT"             # 403: API của nhân viên
+```
+
+**Tạo tài khoản nhân viên** (mật khẩu tạm chỉ hiện một lần, nhân viên phải đổi ở lần đăng nhập đầu):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"username":"lan.nv","roles":["SHOP_STAFF"]}'
+curl http://localhost:8080/api/v1/roles -H "Authorization: Bearer $TOKEN"                # role + permission
+```
+
+Thử zero trust: `curl -i http://localhost:8082/api/v1/customers` (gọi thẳng service, bỏ qua gateway) vẫn nhận 401.
 
 Thử gửi lại lệnh sửa với `"version":0` lần nữa: bạn sẽ nhận lỗi `COM-409-001` vì version đã tăng lên 1.
 
 Mỗi response có header `X-Correlation-Id`. Lấy mã đó tìm trong log của gateway và catalog-service sẽ thấy cùng một request.
 
-Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog), http://localhost:8082/swagger-ui.html (customer)
+Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog), http://localhost:8082/swagger-ui.html (customer), http://localhost:8083/swagger-ui.html (identity)
 
 ## 6. Debug
 
@@ -198,6 +263,8 @@ Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog
 ```bash
 mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers tự bật Postgres)
 mvn -pl customer-service test
+mvn -pl identity-service test
+mvn -pl api-gateway test         # không cần Docker
 ```
 
 ## 8. Lỗi thường gặp
@@ -210,6 +277,10 @@ mvn -pl customer-service test
 - Sửa file `01-create-databases.sql` nhưng không thấy tác dụng: script chỉ chạy khi volume trống, cần `docker compose down -v` (sẽ XÓA dữ liệu local).
 - `FATAL: database "customer_db" does not exist`: máy đã có volume Postgres từ trước nên script init không chạy lại. Chạy tay một lần: `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER"' < infra/postgres/init/02-create-customer-db.sql` (không cần xóa volume).
 - Gateway trả 503: service đích chưa đăng ký xong lên Eureka, đợi thêm vài giây.
+- `FATAL: database "identity_db" does not exist`: như trên, chạy tay `infra/postgres/init/03-create-identity-db.sql`.
+- `401 COM-401-001` dù vừa đăng nhập: token quá 15 phút, hoặc identity-service vừa restart ở local (khóa ký mới). Đăng nhập lại.
+- `403 COM-403-001`: token hợp lệ nhưng thiếu permission. Token của tài khoản mới/được reset mật khẩu không có permission nào cho tới khi đổi mật khẩu. Đổi role xong phải đăng nhập lại mới có quyền mới.
+- `423 IDN-423-001`: sai mật khẩu 5 lần, đợi 15 phút hoặc ADMIN gọi `POST /api/v1/users/{publicId}/unlock`.
 
 ## 9. Làm việc với nhiều repo
 
@@ -274,7 +345,7 @@ CI dùng chung nằm ở repo **flower-shop-platform** (`.github/workflows/maven
 2. Version release **không được commit** (production chỉ nhận PR). CI bỏ `-SNAPSHOT` ngay trong máy build, publish, rồi gắn tag `vX.Y.Z`. Commit tại tag vẫn ghi `-SNAPSHOT` trong pom, đó là chủ ý.
 3. Release service sẽ tự đổi parent `X.Y.Z-SNAPSHOT` thành `X.Y.Z`, nên **platform phải release trước**.
 4. Release xong phải **tăng version trên dev**, nếu không lần release sau bị chặn ("vX.Y.Z đã release").
-5. Thứ tự: platform → discovery-server → catalog-service → customer-service → api-gateway.
+5. Thứ tự: platform → discovery-server → identity-service → catalog-service → customer-service → api-gateway.
 
 ### Các bước release
 
@@ -288,7 +359,7 @@ gh pr create -R flower-shop-teddy/flower-shop-catalog-service -B production -H d
 #    Merge → ghcr.io/flower-shop-teddy/flower-shop-catalog-service:X.Y.Z
 
 # 3. Tăng version trên dev cho vòng sau (chọn version theo SemVer)
-./set-platform-version.sh 0.2.0-SNAPSHOT        # platform + parent ở 4 service (chỉ khi platform có thay đổi)
+./set-platform-version.sh 0.2.0-SNAPSHOT        # platform + parent ở 5 service (chỉ khi platform có thay đổi)
 cd catalog-service && mvn -q versions:set -DnewVersion=0.2.0-SNAPSHOT -DgenerateBackupPoms=false
 git commit -am "build: bắt đầu phát triển 0.2.0" && git push
 ```
@@ -310,5 +381,7 @@ docker compose -f docker-compose.app.yml down           # tắt theo thứ tự 
 - Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
 
 ## 12. Giai đoạn tiếp theo
+
+**Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, service-to-service bằng client_credentials hoặc mTLS, private key trong Vault/KMS.
 
 **Giai đoạn 2:** thêm `inventory-service` (tồn kho theo lô, xuất FEFO) và `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.
