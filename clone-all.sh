@@ -23,7 +23,7 @@ REPOS=(
 
 # Xác thực chỉ áp dụng cho một repo (không đổi ~/.gitconfig)
 use_gh_credential() { # use_gh_credential <thư mục repo>
-  git -C "$1" config credential.helper ''                       # bỏ helper chung của máy
+  git -C "$1" config --replace-all credential.helper ''                     # bỏ helper chung của máy
   git -C "$1" config --add credential.helper '!gh auth git-credential'
 }
 

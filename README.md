@@ -22,6 +22,7 @@ flower-shop/                 ← repo flower-shop-workspace
 ├── clone-all.sh             Clone các repo bên dưới vào đúng chỗ (+ cài hook commit)
 ├── install-hooks.sh         Bật hook kiểm tra commit message cho mọi repo
 ├── set-platform-version.sh  Đổi version platform + parent của mọi service cùng lúc
+├── create-repo.sh           Tạo repo GitHub cho service mới, cấu hình giống repo có sẵn
 ├── githooks/commit-msg      Hook Conventional Commits
 ├── run-local.sh             Chạy cả hệ thống bằng một lệnh
 ├── docker-compose.yml       Hạ tầng local (Postgres)
@@ -216,6 +217,14 @@ mvn -pl customer-service test
 - Service tìm parent ở `../platform/pom.xml` trước. Vì vậy trong workspace, sửa `platform` là service thấy ngay, không cần publish.
 - Khi build một repo service đứng riêng (CI, máy khác), parent được lấy từ `~/.m2` hoặc GitHub Packages.
 - Push lên `dev` của `flower-shop-platform` sẽ tự publish parent + `common-lib` lên GitHub Packages (workflow `publish.yml`).
+
+### Thêm repo service mới
+
+1. Tạo thư mục service (copy cấu trúc từ `catalog-service`), commit lần đầu trên nhánh `dev`.
+2. Chạy `./create-repo.sh <thư-mục> "<mô tả>"`. Script tạo repo public `flower-shop-<thư-mục>`, push `dev`, tạo `production` **không kích hoạt release**, rồi copy ruleset từ repo catalog. Chạy lại nhiều lần vẫn an toàn.
+3. Thêm thư mục vào `pom.xml`, `clone-all.sh`, `install-hooks.sh`, `set-platform-version.sh`, `run-local.sh`.
+
+Claude Code được phép chạy `./create-repo.sh` mà không phải hỏi (quyền ghi trong `.claude/settings.local.json`, file này không commit).
 
 ## 10. Quy tắc commit (Conventional Commits)
 

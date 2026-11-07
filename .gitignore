@@ -12,3 +12,4 @@ logs/
 /catalog-service/
 /customer-service/
 .DS_Store
+.claude/settings.local.json
