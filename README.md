@@ -17,6 +17,7 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 | `flower-shop-customer-service` | `customer-service/` | Khách hàng + sổ địa chỉ :8082 |
 | `flower-shop-identity-service` | `identity-service/` | Đăng nhập + phân quyền (JWT, RBAC) :8083 |
 | `flower-shop-inventory-service` | `inventory-service/` | Tồn kho theo lô, xuất FEFO, giữ hàng cho đơn :8084 |
+| `flower-shop-order-service` | `order-service/` | Đơn hàng: đặt, xác nhận, giao, hủy :8085 |
 
 ```
 flower-shop/                 ← repo flower-shop-workspace
@@ -47,7 +48,8 @@ flower-shop/                 ← repo flower-shop-workspace
         └── web/             Controller /api/v1/...
 ├── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
 ├── identity-service/        ← repo riêng: tài khoản, role/permission, ký JWT, JWKS (com.flowershop.identity)
-└── inventory-service/       ← repo riêng: lô hàng, giữ hàng, sổ cái kho (com.flowershop.inventory)
+├── inventory-service/       ← repo riêng: lô hàng, giữ hàng, sổ cái kho (com.flowershop.inventory)
+└── order-service/           ← repo riêng: đơn hàng, saga đặt đơn (com.flowershop.order)
 ```
 
 ## 2. Chuẩn ngân hàng đã áp dụng ở giai đoạn này
@@ -88,6 +90,19 @@ Chi tiết: [inventory-service/README.md](inventory-service/README.md).
 | Sổ cái kho chỉ thêm, đối soát được với số lượng lô | `stock_movement`, test `ledger_alwaysReconcilesWithLotQuantities` |
 | Job nhiều instance an toàn (`FOR UPDATE SKIP LOCKED`) | `StockReservationRepository.findOverdueForUpdate` |
 | Không gọi service khác trong lúc giữ transaction DB | `LotService.receive` |
+
+### Đơn hàng
+
+Chi tiết: [order-service/README.md](order-service/README.md).
+
+| Nguyên tắc | Ở đâu trong code |
+|---|---|
+| Đơn lưu bản chụp giá + người nhận, giá lấy từ server (request không có giá) | `CustomerOrder`, `OrderItem`, `CatalogClient` |
+| Tổng tiền luôn khớp các dòng (code + CHECK ở DB) | `CustomerOrder.addItem`, `ck_customer_order_total` |
+| Idempotency-Key khi đặt đơn: bấm hai lần chỉ ra một đơn | `order_request`, `OrderPlacementService.claim` |
+| Saga đặt đơn qua 4 service, bù trừ bằng release khi lỗi | `OrderPlacementService.place` |
+| Thứ tự ghi DB / gọi inventory để đơn và kho luôn khớp; job gọi lại khi inventory lỗi | `OrderLifecycleService` |
+| Service gọi service bằng token của chính nó (client_credentials), không mượn token của khách | `ServiceTokenClient`, `CustomerClient`, `InventoryClient` |
 
 ### Đăng nhập và phân quyền
 
@@ -275,6 +290,26 @@ curl http://localhost:8080/api/v1/customers/me/addresses -H "Authorization: Bear
 curl http://localhost:8080/api/v1/customers/1 -H "Authorization: Bearer $CT"             # 403: API của nhân viên
 ```
 
+**Đặt hoa** (khách đã đăng ký ở trên, cần một địa chỉ trong sổ địa chỉ của mình):
+
+```bash
+ADDR=$(curl -s -X POST http://localhost:8080/api/v1/customers/me/addresses -H "Authorization: Bearer $CT" \
+  -H "Content-Type: application/json" \
+  -d '{"recipientName":"Trần Văn Bình","recipientPhone":"0987654321","addressLine":"12 Lý Thường Kiệt","province":"Hà Nội"}' | jq -r .data.id)
+
+# Idempotency-Key: bấm lại cùng key không tạo đơn thứ hai. Giá do server lấy từ catalog
+curl -X POST http://localhost:8080/api/v1/orders/me -H "Authorization: Bearer $CT" \
+  -H "Content-Type: application/json" -H "Idempotency-Key: $(uuidgen)" \
+  -d "{\"addressId\":$ADDR,\"items\":[{\"sku\":\"ROSE-RED-10\",\"quantity\":2}],\"deliveryDate\":\"$(date -v+1d +%F)\",\"deliverySlot\":\"AFTERNOON\",\"cardMessage\":\"Chúc mừng sinh nhật!\"}"
+
+curl http://localhost:8080/api/v1/orders/me -H "Authorization: Bearer $CT"                         # đơn của tôi
+
+# Nhân viên: xác nhận (shop gọi khách) -> chuẩn bị -> giao -> hoàn tất. Hủy: .../cancel
+curl -X POST http://localhost:8080/api/v1/orders/DH_0000001/confirm -H "Authorization: Bearer $TOKEN"
+curl -X POST http://localhost:8080/api/v1/orders/DH_0000001/prepare -H "Authorization: Bearer $TOKEN"
+curl http://localhost:8080/api/v1/orders/DH_0000001/history -H "Authorization: Bearer $TOKEN"
+```
+
 **Tạo tài khoản nhân viên** (mật khẩu tạm chỉ hiện một lần, nhân viên phải đổi ở lần đăng nhập đầu):
 
 ```bash
@@ -303,6 +338,7 @@ mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers t�
 mvn -pl customer-service test
 mvn -pl identity-service test
 mvn -pl inventory-service test
+mvn -pl order-service test
 mvn -pl api-gateway test         # không cần Docker
 ```
 
@@ -318,6 +354,8 @@ mvn -pl api-gateway test         # không cần Docker
 - Gateway trả 503: service đích chưa đăng ký xong lên Eureka, đợi thêm vài giây.
 - `FATAL: database "identity_db" does not exist`: như trên, chạy tay `infra/postgres/init/03-create-identity-db.sql`.
 - `FATAL: database "inventory_db" does not exist`: như trên, chạy tay `infra/postgres/init/04-create-inventory-db.sql`.
+- `FATAL: database "order_db" does not exist`: như trên, chạy tay `infra/postgres/init/05-create-order-db.sql`.
+- Đặt đơn trả `ORD-503-001`, log order-service có `IDN-401-003`: secret của order-service không khớp client `order-service` bên identity (`ORDER_SERVICE_CLIENT_SECRET`).
 - `401 COM-401-001` dù vừa đăng nhập: token quá 15 phút, hoặc identity-service vừa restart ở local (khóa ký mới). Đăng nhập lại.
 - `403 COM-403-001`: token hợp lệ nhưng thiếu permission. Token của tài khoản mới/được reset mật khẩu không có permission nào cho tới khi đổi mật khẩu. Đổi role xong phải đăng nhập lại mới có quyền mới.
 - `423 IDN-423-001`: sai mật khẩu 5 lần, đợi 15 phút hoặc ADMIN gọi `POST /api/v1/users/{publicId}/unlock`.
@@ -385,7 +423,7 @@ CI dùng chung nằm ở repo **flower-shop-platform** (`.github/workflows/maven
 2. Version release **không được commit** (production chỉ nhận PR). CI bỏ `-SNAPSHOT` ngay trong máy build, publish, rồi gắn tag `vX.Y.Z`. Commit tại tag vẫn ghi `-SNAPSHOT` trong pom, đó là chủ ý.
 3. Release service sẽ tự đổi parent `X.Y.Z-SNAPSHOT` thành `X.Y.Z`, nên **platform phải release trước**.
 4. Release xong phải **tăng version trên dev**, nếu không lần release sau bị chặn ("vX.Y.Z đã release").
-5. Thứ tự: platform → discovery-server → identity-service → catalog-service → customer-service → inventory-service → api-gateway.
+5. Thứ tự: platform → discovery-server → identity-service → catalog-service → customer-service → inventory-service → order-service → api-gateway.
 
 ### Các bước release
 
@@ -417,19 +455,20 @@ echo "JWT_PRIVATE_KEY=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:
 echo "JWT_KEY_ID=dev-$(date +%Y-%m)" >> .env
 echo "BOOTSTRAP_ADMIN_USERNAME=admin" >> .env
 echo "BOOTSTRAP_ADMIN_PASSWORD=FlowerShop2026" >> .env      # lần đăng nhập đầu bị buộc đổi
+echo "ORDER_SERVICE_CLIENT_SECRET=$(openssl rand -base64 36 | tr -d '/+=')" >> .env   # order-service xin token ở identity
 ```
 
 Khóa nằm trong `.env` nên restart container token cũ vẫn dùng được (khác với `./run-local.sh`).
 
 ```bash
-docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> inventory -> gateway
+docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> inventory -> order -> gateway
 docker compose -f docker-compose.app.yml logs -f        # xem log
 docker compose -f docker-compose.app.yml down           # tắt theo thứ tự ngược (dữ liệu DB vẫn giữ trong volume)
 ```
 
 - Thứ tự bật do `depends_on` + `condition: service_healthy` quyết định: service chỉ bật khi service nó cần đã healthy.
 - Trong container, catalog/customer/gateway lấy public key qua `IDENTITY_JWKS_URI=http://identity-service:8083/...` (không phải `localhost`).
-- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `INVENTORY_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
+- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `INVENTORY_VERSION`, `ORDER_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
 - Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
 - Gọi thử API: như mục 5, đăng nhập bằng `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD`.
 
@@ -437,4 +476,6 @@ docker compose -f docker-compose.app.yml down           # tắt theo thứ tự 
 
 **Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, mTLS giữa các service (client_credentials đã có), private key trong Vault/KMS.
 
-**Giai đoạn 2:** ~~`inventory-service`~~ (đã có), tiếp theo `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.
+**Giai đoạn 2:** ~~`inventory-service`~~, ~~`order-service`~~ (đã có: gọi đồng bộ qua `ServiceClientFactory`, đơn lưu snapshot giá). Còn lại: Resilience4j (retry, circuit breaker) cho các lời gọi giữa service.
+
+**Giai đoạn 3:** thanh toán online (`payment-service`), chuyển từ gọi đồng bộ sang sự kiện (outbox + Kafka/RabbitMQ), `notification-service` (SMS/email, OTP).

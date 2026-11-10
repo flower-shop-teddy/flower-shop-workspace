@@ -6,5 +6,4 @@
 CREATE USER catalog_user WITH PASSWORD 'catalog_pass_local';
 CREATE DATABASE catalog_db OWNER catalog_user;
 
--- Giai đoạn sau sẽ thêm:
--- CREATE USER order_user     WITH PASSWORD '...'; CREATE DATABASE order_db     OWNER order_user;
+-- Các service khác: 02-, 03-, 04-, 05-... (mỗi service một file)

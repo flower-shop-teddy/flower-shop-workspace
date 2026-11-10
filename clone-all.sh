@@ -21,6 +21,7 @@ REPOS=(
   "customer-service  flower-shop-customer-service"
   "identity-service  flower-shop-identity-service"
   "inventory-service flower-shop-inventory-service"
+  "order-service     flower-shop-order-service"
 )
 
 # Xác thực chỉ áp dụng cho một repo (không đổi ~/.gitconfig)

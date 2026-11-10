@@ -13,5 +13,6 @@ logs/
 /customer-service/
 /identity-service/
 /inventory-service/
+/order-service/
 .DS_Store
 .claude/settings.local.json

@@ -35,7 +35,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 [ -f .env ] || { echo "✖ Thiếu file .env, chạy: cp .env.example .env" >&2; exit 1; }
 # Mỗi thư mục dưới đây là một repo git riêng
-for repo in platform discovery-server api-gateway catalog-service customer-service identity-service inventory-service; do
+for repo in platform discovery-server api-gateway catalog-service customer-service identity-service inventory-service order-service; do
   [ -f "$repo/pom.xml" ] || { echo "✖ Thiếu repo $repo/, chạy: ./clone-all.sh" >&2; exit 1; }
 done
 echo "▶ Bật Postgres..."
@@ -55,7 +55,7 @@ cleanup() {
   echo "▶ Đang tắt service..."
   # Tắt theo thứ tự NGƯỢC lúc bật: gateway/catalog/customer trước, discovery sau cùng.
   # Nếu tắt discovery cùng lúc, các service kia không hủy đăng ký được với Eureka -> log báo lỗi.
-  # PIDS[0] = discovery, phần còn lại = identity, catalog, customer, inventory, gateway.
+  # PIDS[0] = discovery, phần còn lại = identity, catalog, customer, inventory, order, gateway.
   if [ ${#PIDS[@]} -gt 1 ]; then
     kill "${PIDS[@]:1}" 2>/dev/null || true
     wait "${PIDS[@]:1}" 2>/dev/null || true
@@ -98,11 +98,13 @@ start identity-service 8083 --spring.profiles.active=local
 start catalog-service 8081 --spring.profiles.active=local
 start customer-service 8082 --spring.profiles.active=local
 start inventory-service 8084 --spring.profiles.active=local
+start order-service 8085 --spring.profiles.active=local
 start api-gateway 8080
 wait_http http://localhost:8083/actuator/health "identity-service" 90
 wait_http http://localhost:8081/actuator/health "catalog-service" 90
 wait_http http://localhost:8082/actuator/health "customer-service" 90
 wait_http http://localhost:8084/actuator/health "inventory-service" 90
+wait_http http://localhost:8085/actuator/health "order-service" 90
 wait_http http://localhost:8080/actuator/health "api-gateway" 90
 
 # Service đã lên nhưng gateway cần thêm thời gian để thấy catalog/customer trên Eureka.
@@ -118,12 +120,14 @@ cat <<EOF
                      http://localhost:8080/api/v1/auth/login    (đăng nhập lấy token)
                      http://localhost:8080/api/v1/customers     (cần token)
                      http://localhost:8080/api/v1/inventory     (cần token, trừ /availability)
+                     http://localhost:8080/api/v1/orders/me     (khách đặt/xem đơn)
   ADMIN mặc định:    admin / FlowerShop2026 (lần đầu bị buộc đổi mật khẩu)
   Eureka:            http://localhost:8761
   Swagger:           http://localhost:8081/swagger-ui.html (catalog)
                      http://localhost:8082/swagger-ui.html (customer)
                      http://localhost:8083/swagger-ui.html (identity)
                      http://localhost:8084/swagger-ui.html (inventory)
+                     http://localhost:8085/swagger-ui.html (order)
   Xem log:           tail -f $LOG_DIR/*.log
 
 Ctrl+C để tắt.

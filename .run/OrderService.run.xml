@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="7. OrderService" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="com.flowershop.order.OrderServiceApplication" />
+    <module name="order-service" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=local" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

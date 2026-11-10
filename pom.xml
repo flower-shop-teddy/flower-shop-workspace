@@ -24,5 +24,6 @@
         <module>customer-service</module>
         <module>identity-service</module>
         <module>inventory-service</module>
+        <module>order-service</module>
     </modules>
 </project>

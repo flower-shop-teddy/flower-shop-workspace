@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <!-- Compound: bấm Run/Debug một lần là chạy cả 6 service cùng lúc -->
+  <!-- Compound: bấm Run/Debug một lần là chạy cả 7 service cùng lúc -->
   <configuration default="false" name="All Services" type="CompoundRunConfigurationType">
     <toRun name="1. DiscoveryServer" type="Application" />
     <toRun name="2. CatalogService" type="Application" />
@@ -7,6 +7,7 @@
     <toRun name="4. CustomerService" type="Application" />
     <toRun name="5. IdentityService" type="Application" />
     <toRun name="6. InventoryService" type="Application" />
+    <toRun name="7. OrderService" type="Application" />
     <method v="2" />
   </configuration>
 </component>

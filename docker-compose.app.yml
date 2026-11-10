@@ -6,10 +6,11 @@
 #   docker compose -f docker-compose.app.yml down       tắt (tự theo thứ tự ngược)
 #
 # Khác với ./run-local.sh (chạy từ code đang sửa), file này chạy đúng bản đã release.
-# Hai cách dùng chung cổng 8080-8084/8761: chỉ bật một trong hai.
+# Hai cách dùng chung cổng 8080-8085/8761: chỉ bật một trong hai.
 #
 # identity-service KHÔNG chạy profile local nên không tự sinh khóa ký JWT:
 # phải có JWT_PRIVATE_KEY + JWT_KEY_ID trong .env (xem .env.example), thiếu là container dừng ngay.
+# order-service xin token ở identity bằng ORDER_SERVICE_CLIENT_SECRET: cũng bắt buộc có trong .env.
 #
 # Lưu ý: bên trong container, "localhost" là CHÍNH container đó. Các container gọi nhau
 # bằng TÊN SERVICE (postgres, discovery-server...) và cổng bên trong (postgres là 5432, không phải 5433).
@@ -44,6 +45,10 @@ services:
       JWT_KEY_ID: ${JWT_KEY_ID:?Thiếu JWT_KEY_ID trong .env}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      # Service client cho order-service (= identity.service-clients[0] trong application.yml)
+      IDENTITY_SERVICECLIENTS_0_CLIENTID: order-service
+      IDENTITY_SERVICECLIENTS_0_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Thiếu ORDER_SERVICE_CLIENT_SECRET trong .env (xem .env.example)}
+      IDENTITY_SERVICECLIENTS_0_PERMISSIONS: customer:read,inventory:reserve
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,6 +138,36 @@ services:
       retries: 30
       start_period: 15s
 
+  order-service:
+    image: ghcr.io/flower-shop-teddy/flower-shop-order-service:${ORDER_VERSION:-0.1.0}
+    container_name: flowershop-order
+    ports:
+      - "8085:8085"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/order_db
+      DB_USERNAME: order_user
+      DB_PASSWORD: ${ORDER_DB_PASSWORD:-order_pass_local}
+      EUREKA_URL: http://discovery-server:8761/eureka
+      IDENTITY_JWKS_URI: http://identity-service:8083/.well-known/jwks.json
+      ORDER_SERVICE_CLIENT_SECRET: ${ORDER_SERVICE_CLIENT_SECRET:?Thiếu ORDER_SERVICE_CLIENT_SECRET trong .env}
+    depends_on:                 # đặt đơn gọi cả catalog, customer, inventory
+      postgres:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8085/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
   api-gateway:
     image: ghcr.io/flower-shop-teddy/flower-shop-api-gateway:${GATEWAY_VERSION:-0.2.0}
     container_name: flowershop-gateway
@@ -151,6 +186,8 @@ services:
       customer-service:
         condition: service_healthy
       inventory-service:
+        condition: service_healthy
+      order-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health"]
