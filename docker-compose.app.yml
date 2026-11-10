@@ -195,3 +195,17 @@ services:
       timeout: 3s
       retries: 30
       start_period: 15s
+
+  # Giao diện web: nginx phục vụ React + chuyển /api sang gateway (cùng origin, không cần CORS).
+  # Chưa có image trên GHCR (trước lần release đầu) thì compose tự build từ ./web-app.
+  web-app:
+    image: ghcr.io/flower-shop-teddy/flower-shop-web-app:${WEB_APP_VERSION:-0.1.0}
+    build: ./web-app
+    container_name: flowershop-web
+    ports:
+      - "3000:8080"
+    environment:
+      GATEWAY_URL: http://api-gateway:8080
+    depends_on:
+      api-gateway:
+        condition: service_healthy

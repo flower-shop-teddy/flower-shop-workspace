@@ -18,6 +18,7 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 | `flower-shop-identity-service` | `identity-service/` | Đăng nhập + phân quyền (JWT, RBAC) :8083 |
 | `flower-shop-inventory-service` | `inventory-service/` | Tồn kho theo lô, xuất FEFO, giữ hàng cho đơn :8084 |
 | `flower-shop-order-service` | `order-service/` | Đơn hàng: đặt, xác nhận, giao, hủy :8085 |
+| `flower-shop-web-app` | `web-app/` | Giao diện React (cửa hàng + trang quản trị) :5173 dev / :3000 docker |
 
 ```
 flower-shop/                 ← repo flower-shop-workspace
@@ -50,7 +51,8 @@ flower-shop/                 ← repo flower-shop-workspace
 ├── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
 ├── identity-service/        ← repo riêng: tài khoản, role/permission, ký JWT, JWKS (com.flowershop.identity)
 ├── inventory-service/       ← repo riêng: lô hàng, giữ hàng, sổ cái kho (com.flowershop.inventory)
-└── order-service/           ← repo riêng: đơn hàng, saga đặt đơn (com.flowershop.order)
+├── order-service/           ← repo riêng: đơn hàng, saga đặt đơn (com.flowershop.order)
+└── web-app/                 ← repo riêng: React + Mantine, chi tiết ở web-app/README.md
 ```
 
 ## 2. Chuẩn ngân hàng đã áp dụng ở giai đoạn này
@@ -179,6 +181,19 @@ mvn clean install -DskipTests     # lần đầu tải thư viện sẽ hơi lâ
 
 **IntelliJ:** chọn cấu hình **All Services** ở góc trên bên phải rồi bấm Run hoặc Debug (file trong `.run/`).
 Compound bật 5 service cùng lúc. Eureka client tự thử lại nên vẫn chạy đúng, chỉ mất khoảng 30–40 giây để gateway thấy catalog và customer.
+
+### Giao diện web
+
+Backend chạy rồi (cách nào ở trên cũng được), mở terminal khác:
+
+```bash
+cd web-app
+nvm use && npm ci      # lần đầu; cần Node 22 (nvm install 22)
+npm run dev            # http://localhost:5173
+```
+
+Vite chuyển `/api` sang gateway `:8080` nên trình duyệt chỉ gọi cùng origin, gateway không cần bật CORS.
+Chi tiết kiến trúc và các quyết định bảo mật: [web-app/README.md](web-app/README.md).
 
 ### Cách thủ công
 
@@ -478,14 +493,15 @@ echo "ORDER_SERVICE_CLIENT_SECRET=$(openssl rand -base64 36 | tr -d '/+=')" >> .
 Khóa nằm trong `.env` nên restart container token cũ vẫn dùng được (khác với `./run-local.sh`).
 
 ```bash
-docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> inventory -> order -> gateway
+docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> inventory -> order -> gateway -> web-app
 docker compose -f docker-compose.app.yml logs -f        # xem log
 docker compose -f docker-compose.app.yml down           # tắt theo thứ tự ngược (dữ liệu DB vẫn giữ trong volume)
 ```
 
 - Thứ tự bật do `depends_on` + `condition: service_healthy` quyết định: service chỉ bật khi service nó cần đã healthy.
 - Trong container, catalog/customer/gateway lấy public key qua `IDENTITY_JWKS_URI=http://identity-service:8083/...` (không phải `localhost`).
-- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `INVENTORY_VERSION`, `ORDER_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
+- Giao diện web: http://localhost:3000 (nginx trong container chuyển `/api` sang gateway). Trước lần release đầu của web-app, compose tự build image từ `./web-app`.
+- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `INVENTORY_VERSION`, `ORDER_VERSION`, `GATEWAY_VERSION`, `WEB_APP_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
 - Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
 - Gọi thử API: như mục 5, đăng nhập bằng `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD`.
 

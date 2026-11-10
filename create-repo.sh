@@ -2,6 +2,7 @@
 # Đưa một thư mục service trong workspace lên GitHub thành repo riêng, cấu hình GIỐNG các repo đang có:
 #   ./create-repo.sh <thư mục> "<mô tả>"
 #   ./create-repo.sh order-service "Order service: đơn hàng"
+#   ./create-repo.sh web-app "Web app: cửa hàng + trang quản trị (React)"
 #
 # Script làm:
 #   1. repo local: nhánh dev, email commit noreply, xác thực qua gh (như clone-all.sh), hook commit
@@ -24,7 +25,8 @@ die() { echo "✖ $*" >&2; exit 1; }
 DIR=${1:?Cách dùng: ./create-repo.sh <thư mục> \"<mô tả>\"}
 DESC=${2:?Thiếu mô tả repo}
 [[ "$DIR" =~ ^[a-z0-9-]+$ ]] || die "Tên thư mục chỉ gồm chữ thường, số, dấu '-': $DIR"
-[ -f "$DIR/pom.xml" ] || die "Không thấy $DIR/pom.xml"
+# Service Java (pom.xml) hoặc ứng dụng web (package.json)
+[ -f "$DIR/pom.xml" ] || [ -f "$DIR/package.json" ] || die "Không thấy $DIR/pom.xml hay $DIR/package.json"
 REPO=$ORG/flower-shop-$DIR
 URL=https://github.com/$REPO.git
 command -v gh >/dev/null || die "Chưa cài GitHub CLI: brew install gh"
