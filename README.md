@@ -27,6 +27,7 @@ flower-shop/                 ← repo flower-shop-workspace
 ├── set-platform-version.sh  Đổi version platform + parent của mọi service cùng lúc
 ├── create-repo.sh           Tạo repo GitHub cho service mới, cấu hình giống repo có sẵn
 ├── githooks/commit-msg      Hook Conventional Commits
+├── postman/                 Postman collection mọi API (+ generate.py để sinh lại)
 ├── run-local.sh             Chạy cả hệ thống bằng một lệnh
 ├── docker-compose.yml       Hạ tầng local (Postgres)
 ├── .env.example             Mẫu biến môi trường -> copy thành .env
@@ -327,6 +328,20 @@ Thử gửi lại lệnh sửa với `"version":0` lần nữa: bạn sẽ nhậ
 Mỗi response có header `X-Correlation-Id`. Lấy mã đó tìm trong log của gateway và catalog-service sẽ thấy cùng một request.
 
 Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog), http://localhost:8082/swagger-ui.html (customer), http://localhost:8083/swagger-ui.html (identity)
+
+### Postman
+
+Import file [`postman/flower-shop.postman_collection.json`](postman/flower-shop.postman_collection.json) vào Postman
+(File → Import). Có đủ 69 request của mọi service, chia 10 thư mục theo luồng dùng:
+
+1. Đăng nhập & tài khoản · 2. Quản trị nhân viên · 3. Danh mục hoa · 4. Khách hàng (nhân viên) · 5. Khách tự đăng ký & /me ·
+6. Tồn kho · 7. Đơn hàng (khách) · 8. Đơn hàng (nhân viên) · 9. Nội bộ (gọi thẳng 8083/8084) · 10. Đăng xuất
+
+- Chạy từ trên xuống: token, SKU, mã lô, mã đơn... tự lưu vào biến của collection, request sau dùng tiếp.
+  Chạy cả collection một lần: chuột phải → **Run collection**. Chạy lại nhiều lần được (SĐT, SKU, email sinh mới mỗi lần).
+- DB mới: request đổi mật khẩu ADMIN tự chạy; mật khẩu đã đổi rồi thì nó tự bỏ qua. Mật khẩu ADMIN khác `QuanTri2026x`: sửa biến `adminPassword`.
+- Chạy bằng `docker-compose.app.yml`: đặt biến `orderServiceSecret` = `ORDER_SERVICE_CLIENT_SECRET` trong `.env`.
+- Thêm/đổi API: sửa `postman/generate.py` rồi `python3 postman/generate.py postman/flower-shop.postman_collection.json`.
 
 ## 6. Debug
 
