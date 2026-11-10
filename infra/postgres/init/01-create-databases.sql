@@ -7,5 +7,4 @@ CREATE USER catalog_user WITH PASSWORD 'catalog_pass_local';
 CREATE DATABASE catalog_db OWNER catalog_user;
 
 -- Giai đoạn sau sẽ thêm:
--- CREATE USER inventory_user WITH PASSWORD '...'; CREATE DATABASE inventory_db OWNER inventory_user;
 -- CREATE USER order_user     WITH PASSWORD '...'; CREATE DATABASE order_db     OWNER order_user;

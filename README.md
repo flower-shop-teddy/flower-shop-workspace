@@ -16,6 +16,7 @@ Repo này (`flower-shop-workspace`) gom chúng lại để chạy và debug ở 
 | `flower-shop-catalog-service` | `catalog-service/` | Danh mục hoa :8081 |
 | `flower-shop-customer-service` | `customer-service/` | Khách hàng + sổ địa chỉ :8082 |
 | `flower-shop-identity-service` | `identity-service/` | Đăng nhập + phân quyền (JWT, RBAC) :8083 |
+| `flower-shop-inventory-service` | `inventory-service/` | Tồn kho theo lô, xuất FEFO, giữ hàng cho đơn :8084 |
 
 ```
 flower-shop/                 ← repo flower-shop-workspace
@@ -45,7 +46,8 @@ flower-shop/                 ← repo flower-shop-workspace
         ├── service/         Logic nghiệp vụ + transaction
         └── web/             Controller /api/v1/...
 ├── customer-service/        ← repo riêng, cùng cấu trúc package (com.flowershop.customer)
-└── identity-service/        ← repo riêng: tài khoản, role/permission, ký JWT, JWKS (com.flowershop.identity)
+├── identity-service/        ← repo riêng: tài khoản, role/permission, ký JWT, JWKS (com.flowershop.identity)
+└── inventory-service/       ← repo riêng: lô hàng, giữ hàng, sổ cái kho (com.flowershop.inventory)
 ```
 
 ## 2. Chuẩn ngân hàng đã áp dụng ở giai đoạn này
@@ -72,6 +74,20 @@ flower-shop/                 ← repo flower-shop-workspace
 | Đọc/sửa tài nguyên con luôn kèm id chủ sở hữu, sai chủ trả 404 | `DeliveryAddressRepository.findByIdAndCustomerId` |
 | Khóa dòng (`SELECT ... FOR UPDATE`) khi luật nghiệp vụ phụ thuộc nhiều dòng | `CustomerRepository.findByIdForUpdate` |
 | Mã nghiệp vụ (kiểu số CIF) tách khỏi id kỹ thuật | `customer_code` `KH_CN_0000001`, `customer_code_seq` |
+
+### Tồn kho
+
+Chi tiết: [inventory-service/README.md](inventory-service/README.md).
+
+| Nguyên tắc | Ở đâu trong code |
+|---|---|
+| Quản lý theo lô, xuất FEFO, lọc lô còn hạn tới giờ giao | `StockLotRepository.findFefoForUpdate` |
+| Khóa lô (`FOR UPDATE`) khi giữ hàng: không bán vượt dù nhiều đơn cùng lúc | `ReservationService.reserve`, test `concurrentReservations_neverOversell` |
+| Giữ hàng tất cả hoặc không; khóa theo thứ tự SKU để không deadlock | `ReservationService` |
+| Idempotent theo mã đơn (UNIQUE `order_code`) | `stock_reservation`, `ReservationService.reserve` |
+| Sổ cái kho chỉ thêm, đối soát được với số lượng lô | `stock_movement`, test `ledger_alwaysReconcilesWithLotQuantities` |
+| Job nhiều instance an toàn (`FOR UPDATE SKIP LOCKED`) | `StockReservationRepository.findOverdueForUpdate` |
+| Không gọi service khác trong lúc giữ transaction DB | `LotService.receive` |
 
 ### Đăng nhập và phân quyền
 
@@ -225,6 +241,26 @@ curl http://localhost:8080/api/v1/customers/1/addresses -H "Authorization: Beare
 curl -X PUT http://localhost:8080/api/v1/customers/1/addresses/2/default -H "Authorization: Bearer $TOKEN"
 ```
 
+**Tồn kho** (SKU phải có trong catalog và đang bán, ví dụ `ROSE-RED-10` tạo ở trên):
+
+```bash
+# Nhập lô (cần inventory:write). Thời điểm nhập lấy giờ server, hạn dùng do người nhập khai
+curl -X POST http://localhost:8080/api/v1/inventory/lots -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"sku":"ROSE-RED-10","quantity":20,"unitCost":120000,"currency":"VND","expiresAt":"2026-12-01T00:00:00Z","supplier":"Vườn Đà Lạt"}'
+
+curl "http://localhost:8080/api/v1/inventory/stock?sku=ROSE-RED-10" -H "Authorization: Bearer $TOKEN"   # {sellable, expired}
+curl "http://localhost:8080/api/v1/inventory/lots?sku=ROSE-RED-10" -H "Authorization: Bearer $TOKEN"    # lô sắp hết hạn lên đầu
+curl "http://localhost:8080/api/v1/inventory/availability?sku=ROSE-RED-10"                               # public: chỉ còn/hết
+
+# Hoa hỏng: ghi nhận hủy (vào sổ cái, kèm lý do)
+curl -X POST http://localhost:8080/api/v1/inventory/lots/LO_0000001/waste -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" -d '{"quantity":2,"reason":"DAMAGED","note":"dập khi vận chuyển"}'
+curl http://localhost:8080/api/v1/inventory/lots/LO_0000001/movements -H "Authorization: Bearer $TOKEN"
+```
+
+Giữ hàng (`/internal/v1/reservations`) chỉ dành cho order-service bằng service token, không gọi được qua gateway.
+
 **Khách tự đăng ký và dùng API `/me`:**
 
 ```bash
@@ -266,6 +302,7 @@ Swagger UI (chỉ profile local): http://localhost:8081/swagger-ui.html (catalog
 mvn -pl catalog-service test     # cần Docker đang chạy (Testcontainers tự bật Postgres)
 mvn -pl customer-service test
 mvn -pl identity-service test
+mvn -pl inventory-service test
 mvn -pl api-gateway test         # không cần Docker
 ```
 
@@ -280,6 +317,7 @@ mvn -pl api-gateway test         # không cần Docker
 - `FATAL: database "customer_db" does not exist`: máy đã có volume Postgres từ trước nên script init không chạy lại. Chạy tay một lần: `docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER"' < infra/postgres/init/02-create-customer-db.sql` (không cần xóa volume).
 - Gateway trả 503: service đích chưa đăng ký xong lên Eureka, đợi thêm vài giây.
 - `FATAL: database "identity_db" does not exist`: như trên, chạy tay `infra/postgres/init/03-create-identity-db.sql`.
+- `FATAL: database "inventory_db" does not exist`: như trên, chạy tay `infra/postgres/init/04-create-inventory-db.sql`.
 - `401 COM-401-001` dù vừa đăng nhập: token quá 15 phút, hoặc identity-service vừa restart ở local (khóa ký mới). Đăng nhập lại.
 - `403 COM-403-001`: token hợp lệ nhưng thiếu permission. Token của tài khoản mới/được reset mật khẩu không có permission nào cho tới khi đổi mật khẩu. Đổi role xong phải đăng nhập lại mới có quyền mới.
 - `423 IDN-423-001`: sai mật khẩu 5 lần, đợi 15 phút hoặc ADMIN gọi `POST /api/v1/users/{publicId}/unlock`.
@@ -347,7 +385,7 @@ CI dùng chung nằm ở repo **flower-shop-platform** (`.github/workflows/maven
 2. Version release **không được commit** (production chỉ nhận PR). CI bỏ `-SNAPSHOT` ngay trong máy build, publish, rồi gắn tag `vX.Y.Z`. Commit tại tag vẫn ghi `-SNAPSHOT` trong pom, đó là chủ ý.
 3. Release service sẽ tự đổi parent `X.Y.Z-SNAPSHOT` thành `X.Y.Z`, nên **platform phải release trước**.
 4. Release xong phải **tăng version trên dev**, nếu không lần release sau bị chặn ("vX.Y.Z đã release").
-5. Thứ tự: platform → discovery-server → identity-service → catalog-service → customer-service → api-gateway.
+5. Thứ tự: platform → discovery-server → identity-service → catalog-service → customer-service → inventory-service → api-gateway.
 
 ### Các bước release
 
@@ -384,14 +422,14 @@ echo "BOOTSTRAP_ADMIN_PASSWORD=FlowerShop2026" >> .env      # lần đăng nhậ
 Khóa nằm trong `.env` nên restart container token cũ vẫn dùng được (khác với `./run-local.sh`).
 
 ```bash
-docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> gateway
+docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> inventory -> gateway
 docker compose -f docker-compose.app.yml logs -f        # xem log
 docker compose -f docker-compose.app.yml down           # tắt theo thứ tự ngược (dữ liệu DB vẫn giữ trong volume)
 ```
 
 - Thứ tự bật do `depends_on` + `condition: service_healthy` quyết định: service chỉ bật khi service nó cần đã healthy.
 - Trong container, catalog/customer/gateway lấy public key qua `IDENTITY_JWKS_URI=http://identity-service:8083/...` (không phải `localhost`).
-- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
+- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `INVENTORY_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
 - Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
 - Gọi thử API: như mục 5, đăng nhập bằng `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD`.
 
@@ -399,4 +437,4 @@ docker compose -f docker-compose.app.yml down           # tắt theo thứ tự 
 
 **Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, mTLS giữa các service (client_credentials đã có), private key trong Vault/KMS.
 
-**Giai đoạn 2:** thêm `inventory-service` (tồn kho theo lô, xuất FEFO) và `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.
+**Giai đoạn 2:** ~~`inventory-service`~~ (đã có), tiếp theo `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.

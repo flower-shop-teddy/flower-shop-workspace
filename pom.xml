@@ -23,5 +23,6 @@
         <module>catalog-service</module>
         <module>customer-service</module>
         <module>identity-service</module>
+        <module>inventory-service</module>
     </modules>
 </project>

@@ -6,7 +6,7 @@
 #   docker compose -f docker-compose.app.yml down       tắt (tự theo thứ tự ngược)
 #
 # Khác với ./run-local.sh (chạy từ code đang sửa), file này chạy đúng bản đã release.
-# Hai cách dùng chung cổng 8080-8083/8761: chỉ bật một trong hai.
+# Hai cách dùng chung cổng 8080-8084/8761: chỉ bật một trong hai.
 #
 # identity-service KHÔNG chạy profile local nên không tự sinh khóa ký JWT:
 # phải có JWT_PRIVATE_KEY + JWT_KEY_ID trong .env (xem .env.example), thiếu là container dừng ngay.
@@ -106,6 +106,33 @@ services:
       retries: 30
       start_period: 15s
 
+  inventory-service:
+    image: ghcr.io/flower-shop-teddy/flower-shop-inventory-service:${INVENTORY_VERSION:-0.1.0}
+    container_name: flowershop-inventory
+    ports:
+      - "8084:8084"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/inventory_db
+      DB_USERNAME: inventory_user
+      DB_PASSWORD: ${INVENTORY_DB_PASSWORD:-inventory_pass_local}
+      EUREKA_URL: http://discovery-server:8761/eureka
+      IDENTITY_JWKS_URI: http://identity-service:8083/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      catalog-service:          # nhập lô phải hỏi catalog SKU có tồn tại không
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8084/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
   api-gateway:
     image: ghcr.io/flower-shop-teddy/flower-shop-api-gateway:${GATEWAY_VERSION:-0.2.0}
     container_name: flowershop-gateway
@@ -122,6 +149,8 @@ services:
       catalog-service:
         condition: service_healthy
       customer-service:
+        condition: service_healthy
+      inventory-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health"]
