@@ -6,7 +6,10 @@
 #   docker compose -f docker-compose.app.yml down       tắt (tự theo thứ tự ngược)
 #
 # Khác với ./run-local.sh (chạy từ code đang sửa), file này chạy đúng bản đã release.
-# Hai cách dùng chung cổng 8080/8081/8761: chỉ bật một trong hai.
+# Hai cách dùng chung cổng 8080-8083/8761: chỉ bật một trong hai.
+#
+# identity-service KHÔNG chạy profile local nên không tự sinh khóa ký JWT:
+# phải có JWT_PRIVATE_KEY + JWT_KEY_ID trong .env (xem .env.example), thiếu là container dừng ngay.
 #
 # Lưu ý: bên trong container, "localhost" là CHÍNH container đó. Các container gọi nhau
 # bằng TÊN SERVICE (postgres, discovery-server...) và cổng bên trong (postgres là 5432, không phải 5433).
@@ -16,7 +19,7 @@ include:
 
 services:
   discovery-server:
-    image: ghcr.io/flower-shop-teddy/flower-shop-discovery-server:${DISCOVERY_VERSION:-0.1.0}
+    image: ghcr.io/flower-shop-teddy/flower-shop-discovery-server:${DISCOVERY_VERSION:-0.2.0}
     container_name: flowershop-discovery
     ports:
       - "8761:8761"
@@ -27,8 +30,34 @@ services:
       retries: 30
       start_period: 10s
 
+  identity-service:
+    image: ghcr.io/flower-shop-teddy/flower-shop-identity-service:${IDENTITY_VERSION:-0.1.0}
+    container_name: flowershop-identity
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/identity_db
+      DB_USERNAME: identity_user
+      DB_PASSWORD: ${IDENTITY_DB_PASSWORD:-identity_pass_local}
+      EUREKA_URL: http://discovery-server:8761/eureka
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?Thiếu JWT_PRIVATE_KEY trong .env (xem .env.example)}
+      JWT_KEY_ID: ${JWT_KEY_ID:?Thiếu JWT_KEY_ID trong .env}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8083/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
   catalog-service:
-    image: ghcr.io/flower-shop-teddy/flower-shop-catalog-service:${CATALOG_VERSION:-0.1.0}
+    image: ghcr.io/flower-shop-teddy/flower-shop-catalog-service:${CATALOG_VERSION:-0.2.0}
     container_name: flowershop-catalog
     ports:
       - "8081:8081"
@@ -37,10 +66,13 @@ services:
       DB_USERNAME: catalog_user
       DB_PASSWORD: ${CATALOG_DB_PASSWORD:-catalog_pass_local}   # mật khẩu máy dev (infra/postgres/init)
       EUREKA_URL: http://discovery-server:8761/eureka
-    depends_on:                 # chỉ bật khi DB và Eureka đã healthy
+      IDENTITY_JWKS_URI: http://identity-service:8083/.well-known/jwks.json   # trong container, localhost là chính nó
+    depends_on:                 # chỉ bật khi DB, Eureka và identity (nơi lấy public key) đã healthy
       postgres:
         condition: service_healthy
       discovery-server:
+        condition: service_healthy
+      identity-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8081/actuator/health"]
@@ -49,17 +81,47 @@ services:
       retries: 30
       start_period: 15s
 
+  customer-service:
+    image: ghcr.io/flower-shop-teddy/flower-shop-customer-service:${CUSTOMER_VERSION:-0.2.0}
+    container_name: flowershop-customer
+    ports:
+      - "8082:8082"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/customer_db
+      DB_USERNAME: customer_user
+      DB_PASSWORD: ${CUSTOMER_DB_PASSWORD:-customer_pass_local}
+      EUREKA_URL: http://discovery-server:8761/eureka
+      IDENTITY_JWKS_URI: http://identity-service:8083/.well-known/jwks.json
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8082/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
   api-gateway:
-    image: ghcr.io/flower-shop-teddy/flower-shop-api-gateway:${GATEWAY_VERSION:-0.1.0}
+    image: ghcr.io/flower-shop-teddy/flower-shop-api-gateway:${GATEWAY_VERSION:-0.2.0}
     container_name: flowershop-gateway
     ports:
       - "8080:8080"
     environment:
       EUREKA_URL: http://discovery-server:8761/eureka
+      IDENTITY_JWKS_URI: http://identity-service:8083/.well-known/jwks.json
     depends_on:
       discovery-server:
         condition: service_healthy
+      identity-service:
+        condition: service_healthy
       catalog-service:
+        condition: service_healthy
+      customer-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8080/actuator/health"]

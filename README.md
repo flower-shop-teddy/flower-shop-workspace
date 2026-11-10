@@ -89,6 +89,7 @@ Chi tiết và lý do từng quyết định: [identity-service/README.md](ident
 | Sai user/sai mật khẩu cùng một mã lỗi; khóa sau 5 lần sai; bộ đếm không bị rollback | `AuthService.doLogin` |
 | Nhật ký bảo mật chỉ thêm, có IP + correlation id; `created_by` = `sub` của token | `auth_event`, `JwtAuditorAware` |
 | Đăng ký khách trải trên 2 service: saga + bù trừ | `RegistrationService` |
+| Gọi service khác: timeout bắt buộc, tự gắn token + correlation id, mọi lỗi thành `RemoteServiceException` mang mã lỗi gốc | `common-lib/.../client/ServiceClientFactory`, `CustomerClient` |
 
 ## 3. Cài đặt
 
@@ -368,17 +369,30 @@ git commit -am "build: bắt đầu phát triển 0.2.0" && git push
 
 ### Chạy image đã release
 
-Chạy cả hệ thống từ image trên GHCR, không cần code, không cần build (image đang public nên không phải đăng nhập):
+Chạy cả hệ thống từ image trên GHCR, không cần code, không cần build (image đang public nên không phải đăng nhập).
+
+**Lần đầu:** image chạy profile thật nên identity-service không tự sinh khóa ký JWT. Thêm khóa vào `.env`:
 
 ```bash
-docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> catalog -> gateway
+echo "JWT_PRIVATE_KEY=$(openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 | tr -d '\n')" >> .env
+echo "JWT_KEY_ID=dev-$(date +%Y-%m)" >> .env
+echo "BOOTSTRAP_ADMIN_USERNAME=admin" >> .env
+echo "BOOTSTRAP_ADMIN_PASSWORD=FlowerShop2026" >> .env      # lần đăng nhập đầu bị buộc đổi
+```
+
+Khóa nằm trong `.env` nên restart container token cũ vẫn dùng được (khác với `./run-local.sh`).
+
+```bash
+docker compose -f docker-compose.app.yml up -d --wait   # postgres -> discovery -> identity -> catalog + customer -> gateway
 docker compose -f docker-compose.app.yml logs -f        # xem log
 docker compose -f docker-compose.app.yml down           # tắt theo thứ tự ngược (dữ liệu DB vẫn giữ trong volume)
 ```
 
 - Thứ tự bật do `depends_on` + `condition: service_healthy` quyết định: service chỉ bật khi service nó cần đã healthy.
-- Chạy version khác: đặt `DISCOVERY_VERSION`, `CATALOG_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định `0.1.0`).
+- Trong container, catalog/customer/gateway lấy public key qua `IDENTITY_JWKS_URI=http://identity-service:8083/...` (không phải `localhost`).
+- Chạy version khác: đặt `DISCOVERY_VERSION`, `IDENTITY_VERSION`, `CATALOG_VERSION`, `CUSTOMER_VERSION`, `GATEWAY_VERSION` trong `.env` (mặc định xem trong `docker-compose.app.yml`).
 - Dùng chung cổng với `./run-local.sh`: chỉ bật một trong hai.
+- Gọi thử API: như mục 5, đăng nhập bằng `BOOTSTRAP_ADMIN_USERNAME` / `BOOTSTRAP_ADMIN_PASSWORD`.
 
 ## 12. Giai đoạn tiếp theo
 
