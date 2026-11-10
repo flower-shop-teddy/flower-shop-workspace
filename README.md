@@ -89,6 +89,7 @@ Chi tiết và lý do từng quyết định: [identity-service/README.md](ident
 | Sai user/sai mật khẩu cùng một mã lỗi; khóa sau 5 lần sai; bộ đếm không bị rollback | `AuthService.doLogin` |
 | Nhật ký bảo mật chỉ thêm, có IP + correlation id; `created_by` = `sub` của token | `auth_event`, `JwtAuditorAware` |
 | Đăng ký khách trải trên 2 service: saga + bù trừ | `RegistrationService` |
+| Service xin token gọi service khác bằng client_credentials, `/internal/**` bị gateway chặn | `ServiceTokenService`, `ServiceTokenClient` |
 | Gọi service khác: timeout bắt buộc, tự gắn token + correlation id, mọi lỗi thành `RemoteServiceException` mang mã lỗi gốc | `common-lib/.../client/ServiceClientFactory`, `CustomerClient` |
 
 ## 3. Cài đặt
@@ -396,6 +397,6 @@ docker compose -f docker-compose.app.yml down           # tắt theo thứ tự 
 
 ## 12. Giai đoạn tiếp theo
 
-**Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, service-to-service bằng client_credentials hoặc mTLS, private key trong Vault/KMS.
+**Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, mTLS giữa các service (client_credentials đã có), private key trong Vault/KMS.
 
 **Giai đoạn 2:** thêm `inventory-service` (tồn kho theo lô, xuất FEFO) và `order-service` gọi đồng bộ qua OpenFeign, kèm Resilience4j (timeout, retry, circuit breaker). Đơn hàng lưu **snapshot** giá tại thời điểm đặt.
