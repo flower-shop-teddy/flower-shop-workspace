@@ -2,6 +2,7 @@
     python3 postman/generate.py postman/flower-shop.postman_collection.json
 """
 import json
+import re
 import sys
 import uuid
 
@@ -31,7 +32,7 @@ def req(name, method, url, body=None, auth="inherit", test=None, pre=None, desc=
     r = {
         "method": method,
         "header": [],
-        "url": {"raw": url},
+        "url": url_object(url),
     }
     if desc:
         r["description"] = desc
@@ -54,6 +55,22 @@ def req(name, method, url, body=None, auth="inherit", test=None, pre=None, desc=
     if test is not None:
         item["event"].append({"listen": "test", "script": script(test)})
     return item
+
+
+def url_object(raw):
+    """URL đầy đủ như Postman tự export (raw + host + path + query): Postman bản mới đọc host/path khi import,
+    chỉ có raw thì request hiện ra với URL trống."""
+    base, _, query = raw.partition("?")
+    m = re.match(r"^(\{\{\w+\}\})(/.*)?$", base)
+    if m:
+        host, path = [m.group(1)], m.group(2) or ""
+    else:   # http://host:port/... (không dùng trong file này, để phòng)
+        scheme_host, _, path = base.partition("://")[2].partition("/")
+        host, path = scheme_host.split("."), "/" + path
+    url = {"raw": raw, "host": host, "path": [seg for seg in path.split("/") if seg]}
+    if query:
+        url["query"] = [{"key": k, "value": v} for k, _, v in (pair.partition("=") for pair in query.split("&"))]
+    return url
 
 
 def bearer(var):

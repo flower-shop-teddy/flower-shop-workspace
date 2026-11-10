@@ -172,7 +172,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/login"
+              "raw": "{{gatewayUrl}}/api/v1/auth/login",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "CHỈ cần ở lần chạy đầu tiên trên DB mới (profile local tạo admin / FlowerShop2026, bắt buộc đổi mật khẩu).\nĐã đổi rồi thì request này trả IDN-401-001: bỏ qua, chạy thẳng 'Đăng nhập ADMIN'.",
             "body": {
@@ -216,7 +225,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/change-password"
+              "raw": "{{gatewayUrl}}/api/v1/auth/change-password",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "change-password"
+              ]
             },
             "description": "Tự bỏ qua nếu mật khẩu ADMIN đã đổi từ trước. Đổi xong mọi phiên cũ bị thu hồi: đăng nhập lại.",
             "body": {
@@ -274,7 +292,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/login"
+              "raw": "{{gatewayUrl}}/api/v1/auth/login",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "description": "Lưu adminToken (sống 15 phút) và adminRefreshToken. Hết hạn thì chạy lại request này hoặc 'Làm mới token'.",
             "body": {
@@ -312,7 +339,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/me"
+              "raw": "{{gatewayUrl}}/api/v1/auth/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -349,7 +385,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/refresh"
+              "raw": "{{gatewayUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
             },
             "description": "Refresh token xoay vòng: dùng lại refresh token CŨ sẽ thu hồi cả phiên (phát hiện trộm token).",
             "body": {
@@ -386,7 +431,14 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/.well-known/jwks.json"
+              "raw": "{{gatewayUrl}}/.well-known/jwks.json",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                ".well-known",
+                "jwks.json"
+              ]
             },
             "auth": {
               "type": "noauth"
@@ -416,7 +468,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/roles"
+              "raw": "{{gatewayUrl}}/api/v1/roles",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles"
+              ]
             }
           },
           "event": [
@@ -443,7 +503,15 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users"
+              "raw": "{{gatewayUrl}}/api/v1/users",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -485,7 +553,29 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users?type=STAFF&page=0&size=20"
+              "raw": "{{gatewayUrl}}/api/v1/users?type=STAFF&page=0&size=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "STAFF"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
             }
           },
           "event": [
@@ -507,7 +597,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}"
+              ]
             }
           },
           "event": [
@@ -534,7 +633,17 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/roles"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/roles",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}",
+                "roles"
+              ]
             },
             "description": "Đổi role xong nhân viên phải đăng nhập lại mới có quyền mới (permission chụp vào token).",
             "body": {
@@ -566,7 +675,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/disable"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/disable",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}",
+                "disable"
+              ]
             }
           },
           "event": [
@@ -588,7 +707,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/enable"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/enable",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}",
+                "enable"
+              ]
             }
           },
           "event": [
@@ -610,7 +739,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/unlock"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/unlock",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}",
+                "unlock"
+              ]
             }
           },
           "event": [
@@ -632,7 +771,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/reset-password"
+              "raw": "{{gatewayUrl}}/api/v1/users/{{staffPublicId}}/reset-password",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "{{staffPublicId}}",
+                "reset-password"
+              ]
             }
           },
           "event": [
@@ -665,7 +814,15 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers"
+              "raw": "{{gatewayUrl}}/api/v1/flowers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers"
+              ]
             },
             "description": "Mỗi lần chạy sinh SKU mới (ROSE-PM-xxxxxxxx) để không trùng.",
             "body": {
@@ -708,7 +865,25 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers?page=0&size=20"
+              "raw": "{{gatewayUrl}}/api/v1/flowers?page=0&size=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
             },
             "auth": {
               "type": "noauth"
@@ -733,7 +908,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers",
+                "{{flowerId}}"
+              ]
             },
             "auth": {
               "type": "noauth"
@@ -759,7 +943,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers/sku/{{sku}}"
+              "raw": "{{gatewayUrl}}/api/v1/flowers/sku/{{sku}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers",
+                "sku",
+                "{{sku}}"
+              ]
             },
             "auth": {
               "type": "noauth"
@@ -789,7 +983,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers",
+                "{{flowerId}}"
+              ]
             },
             "description": "Gửi lại request này lần nữa mà không đọc version mới: COM-409-001 (optimistic lock).\nĐơn hàng đã đặt giữ nguyên giá cũ (bản chụp).",
             "body": {
@@ -833,7 +1036,15 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers"
+              "raw": "{{gatewayUrl}}/api/v1/customers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
             },
             "description": "Trả customerCode dạng KH_CN_0000001.",
             "body": {
@@ -876,7 +1087,21 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers?phone={{staffCustomerPhone}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers?phone={{staffCustomerPhone}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{staffCustomerPhone}}"
+                }
+              ]
             },
             "description": "Danh sách trả SĐT/email đã che."
           },
@@ -899,7 +1124,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}"
+              ]
             }
           },
           "event": [
@@ -927,7 +1161,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -964,7 +1207,17 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "addresses"
+              ]
             },
             "description": "Địa chỉ đầu tiên tự thành mặc định.",
             "body": {
@@ -998,7 +1251,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "addresses"
+              ]
             }
           },
           "event": [
@@ -1025,7 +1288,18 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "addresses",
+                "{{addressId}}"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1057,7 +1331,19 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}/default"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}/default",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "addresses",
+                "{{addressId}}",
+                "default"
+              ]
             }
           },
           "event": [
@@ -1079,7 +1365,18 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}/addresses/{{addressId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}",
+                "addresses",
+                "{{addressId}}"
+              ]
             }
           },
           "event": [
@@ -1101,7 +1398,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/{{customerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{customerId}}"
+              ]
             }
           },
           "event": [
@@ -1134,7 +1440,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/register"
+              "raw": "{{gatewayUrl}}/api/v1/auth/register",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
             },
             "description": "Saga 2 service: tài khoản ở identity + hồ sơ ở customer. Mỗi lần chạy sinh SĐT mới.",
             "body": {
@@ -1183,7 +1498,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/login"
+              "raw": "{{gatewayUrl}}/api/v1/auth/login",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1218,7 +1542,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1256,7 +1589,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1302,7 +1644,17 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me",
+                "addresses"
+              ]
             },
             "description": "Địa chỉ này dùng để đặt đơn ở mục 7.",
             "body": {
@@ -1346,7 +1698,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me",
+                "addresses"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1383,7 +1745,18 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses/{{myAddressId}}"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses/{{myAddressId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me",
+                "addresses",
+                "{{myAddressId}}"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1424,7 +1797,19 @@
             "method": "PUT",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses/{{myAddressId}}/default"
+              "raw": "{{gatewayUrl}}/api/v1/customers/me/addresses/{{myAddressId}}/default",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "me",
+                "addresses",
+                "{{myAddressId}}",
+                "default"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1456,7 +1841,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/customers"
+              "raw": "{{gatewayUrl}}/api/v1/customers",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1499,7 +1892,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/lots"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/lots",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "lots"
+              ]
             },
             "description": "Dùng SKU vừa tạo ở mục 3. Hạn dùng = 4 ngày sau. SKU không có trong catalog: INV-422-001.",
             "body": {
@@ -1542,7 +1944,22 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/stock?sku={{sku}}"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/stock?sku={{sku}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "stock"
+              ],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "{{sku}}"
+                }
+              ]
             },
             "description": "sellable: còn bán được; expired: còn trong lô đã hết hạn (cần ghi hủy)."
           },
@@ -1565,7 +1982,22 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/availability?sku={{sku}}"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/availability?sku={{sku}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "availability"
+              ],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "{{sku}}"
+                }
+              ]
             },
             "description": "Cho khách xem: chỉ còn/hết, không lộ số lượng.",
             "auth": {
@@ -1591,7 +2023,34 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/lots?sku={{sku}}&includeEmpty=false&page=0&size=20"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/lots?sku={{sku}}&includeEmpty=false&page=0&size=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "lots"
+              ],
+              "query": [
+                {
+                  "key": "sku",
+                  "value": "{{sku}}"
+                },
+                {
+                  "key": "includeEmpty",
+                  "value": "false"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
             }
           },
           "event": [
@@ -1613,7 +2072,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "lots",
+                "{{lotCode}}"
+              ]
             }
           },
           "event": [
@@ -1635,7 +2104,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}/movements"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}/movements",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "lots",
+                "{{lotCode}}",
+                "movements"
+              ]
             },
             "description": "RECEIVE / RESERVE / RELEASE / EXPIRE_HOLD / WASTE, kèm ai làm (nhân viên hoặc order-service)."
           },
@@ -1663,7 +2143,18 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}/waste"
+              "raw": "{{gatewayUrl}}/api/v1/inventory/lots/{{lotCode}}/waste",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "inventory",
+                "lots",
+                "{{lotCode}}",
+                "waste"
+              ]
             },
             "description": "reason: EXPIRED | DAMAGED | OTHER. Hủy nhiều hơn số còn: INV-422-003.",
             "body": {
@@ -1710,7 +2201,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me"
+              ]
             },
             "description": "Cần: customerToken + myAddressId (mục 5), sku có hàng (mục 3, 6).\nGiá lấy từ catalog phía server (body không có giá). Giữ hàng FEFO tới hết khung giờ giao.\ndeliverySlot: MORNING (8-12h) | AFTERNOON (13-17h) | EVENING (18-21h).",
             "body": {
@@ -1776,7 +2276,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me"
+              ]
             },
             "description": "Giả lập khách bấm 'Đặt hàng' hai lần: không tạo đơn thứ hai, không giữ thêm hàng.",
             "body": {
@@ -1819,7 +2328,26 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me?page=0&size=20"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me?page=0&size=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1851,7 +2379,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me/{{orderCode}}"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me/{{orderCode}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me",
+                "{{orderCode}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -1892,7 +2430,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -1952,7 +2499,18 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/me/{{orderToCancel}}/cancel"
+              "raw": "{{gatewayUrl}}/api/v1/orders/me/{{orderToCancel}}/cancel",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "me",
+                "{{orderToCancel}}",
+                "cancel"
+              ]
             },
             "description": "Hàng được trả về kho (xem lại '6. Tồn kho / Tồn kho theo SKU').",
             "body": {
@@ -2001,7 +2559,29 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders?status=PENDING&page=0&size=20"
+              "raw": "{{gatewayUrl}}/api/v1/orders?status=PENDING&page=0&size=20",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
             }
           },
           "event": [
@@ -2023,7 +2603,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}"
+              ]
             }
           },
           "event": [
@@ -2045,7 +2634,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/confirm"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/confirm",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "confirm"
+              ]
             },
             "description": "Phải xác nhận trong 60 phút, quá hạn đơn tự hủy."
           },
@@ -2069,7 +2668,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/prepare"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/prepare",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "prepare"
+              ]
             },
             "description": "Bấm hai lần: ORD-409-003 (không nhảy hai bước). Từ đây không hủy được nữa."
           },
@@ -2092,7 +2701,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/ship"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/ship",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "ship"
+              ]
             }
           },
           "event": [
@@ -2114,7 +2733,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/complete"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/complete",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "complete"
+              ]
             }
           },
           "event": [
@@ -2137,7 +2766,17 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/history"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/history",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "history"
+              ]
             },
             "description": "Ai chuyển trạng thái, lúc nào (khách, nhân viên, hay 'system' khi job tự hủy)."
           },
@@ -2165,7 +2804,17 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/cancel"
+              "raw": "{{gatewayUrl}}/api/v1/orders/{{orderCode}}/cancel",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "{{orderCode}}",
+                "cancel"
+              ]
             },
             "description": "Với đơn vừa giao xong ở trên sẽ trả ORD-409-004. Đổi {{orderCode}} sang một đơn PENDING/CONFIRMED để hủy thật.",
             "body": {
@@ -2207,7 +2856,15 @@
               }
             ],
             "url": {
-              "raw": "{{identityUrl}}/internal/v1/service-token"
+              "raw": "{{identityUrl}}/internal/v1/service-token",
+              "host": [
+                "{{identityUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "service-token"
+              ]
             },
             "description": "client_credentials. Secret mặc định là secret LOCAL của profile local (identity + order dùng chung).",
             "body": {
@@ -2248,7 +2905,15 @@
               }
             ],
             "url": {
-              "raw": "{{inventoryUrl}}/internal/v1/reservations"
+              "raw": "{{inventoryUrl}}/internal/v1/reservations",
+              "host": [
+                "{{inventoryUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "reservations"
+              ]
             },
             "description": "Gọi lại cùng orderCode: 200 trả phiếu cũ (idempotent).",
             "body": {
@@ -2299,7 +2964,16 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}"
+              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}",
+              "host": [
+                "{{inventoryUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "reservations",
+                "{{manualOrderCode}}"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2331,7 +3005,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}/confirm"
+              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}/confirm",
+              "host": [
+                "{{inventoryUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "reservations",
+                "{{manualOrderCode}}",
+                "confirm"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2363,7 +3047,17 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}/release"
+              "raw": "{{inventoryUrl}}/internal/v1/reservations/{{manualOrderCode}}/release",
+              "host": [
+                "{{inventoryUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "reservations",
+                "{{manualOrderCode}}",
+                "release"
+              ]
             },
             "auth": {
               "type": "bearer",
@@ -2400,7 +3094,15 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/internal/v1/service-token"
+              "raw": "{{gatewayUrl}}/internal/v1/service-token",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "service-token"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -2445,7 +3147,15 @@
               }
             ],
             "url": {
-              "raw": "{{inventoryUrl}}/internal/v1/reservations"
+              "raw": "{{inventoryUrl}}/internal/v1/reservations",
+              "host": [
+                "{{inventoryUrl}}"
+              ],
+              "path": [
+                "internal",
+                "v1",
+                "reservations"
+              ]
             },
             "description": "inventory:reserve chỉ cấp cho service client, không role nào của người có.",
             "body": {
@@ -2492,7 +3202,16 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}"
+              "raw": "{{gatewayUrl}}/api/v1/flowers/{{flowerId}}",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "flowers",
+                "{{flowerId}}"
+              ]
             },
             "description": "Chạy SAU khi thử xong tồn kho và đơn hàng: hoa ngừng bán thì không nhập lô / đặt đơn được nữa."
           },
@@ -2520,7 +3239,16 @@
               }
             ],
             "url": {
-              "raw": "{{gatewayUrl}}/api/v1/auth/logout"
+              "raw": "{{gatewayUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{gatewayUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
             },
             "description": "Access token vẫn dùng được tới khi hết hạn (tối đa 15 phút): đó là cái giá của JWT stateless.",
             "body": {
