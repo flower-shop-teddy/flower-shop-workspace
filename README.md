@@ -122,6 +122,8 @@ Chi tiết và lý do từng quyết định: [identity-service/README.md](ident
 | Đăng ký khách trải trên 2 service: saga + bù trừ | `RegistrationService` |
 | Service xin token gọi service khác bằng client_credentials, `/internal/**` bị gateway chặn | `ServiceTokenService`, `ServiceTokenClient` |
 | Gọi service khác: timeout bắt buộc, tự gắn token + correlation id, mọi lỗi thành `RemoteServiceException` mang mã lỗi gốc | `common-lib/.../client/ServiceClientFactory`, `CustomerClient` |
+| Circuit breaker theo service đích: service đích sập thì trả lỗi ngay (~30ms) thay vì đợi timeout, tự thử lại sau 15s | `ServiceResilience`, `ResilienceSettings` |
+| Tự thử lại CHỈ cho lời gọi idempotent (GET, hoặc có `@Idempotent`); lỗi nghiệp vụ (4xx) không thử lại, không làm ngắt mạch | `@Idempotent` trên `InventoryClient`; `CustomerClient` (tạo hồ sơ) cố ý không có |
 
 ## 3. Cài đặt
 
@@ -295,7 +297,7 @@ curl http://localhost:8080/api/v1/customers/1 -H "Authorization: Bearer $CT"    
 ```bash
 ADDR=$(curl -s -X POST http://localhost:8080/api/v1/customers/me/addresses -H "Authorization: Bearer $CT" \
   -H "Content-Type: application/json" \
-  -d '{"recipientName":"Trần Văn Bình","recipientPhone":"0987654321","addressLine":"12 Lý Thường Kiệt","province":"Hà Nội"}' | jq -r .data.id)
+  -d '{"recipientName":"Trần Văn Bình","recipientPhone":"0987654321","addressLine":"12 Lý Thường Kiệt","ward":"Phường Cửa Nam","province":"Hà Nội"}' | jq -r .data.id)
 
 # Idempotency-Key: bấm lại cùng key không tạo đơn thứ hai. Giá do server lấy từ catalog
 curl -X POST http://localhost:8080/api/v1/orders/me -H "Authorization: Bearer $CT" \
@@ -476,6 +478,6 @@ docker compose -f docker-compose.app.yml down           # tắt theo thứ tự 
 
 **Bảo mật, phần còn lại:** OTP khi đăng ký/đổi SĐT, rate limit theo IP ở gateway (Redis), denylist access token theo `jti`, refresh token trong cookie HttpOnly cho web, mTLS giữa các service (client_credentials đã có), private key trong Vault/KMS.
 
-**Giai đoạn 2:** ~~`inventory-service`~~, ~~`order-service`~~ (đã có: gọi đồng bộ qua `ServiceClientFactory`, đơn lưu snapshot giá). Còn lại: Resilience4j (retry, circuit breaker) cho các lời gọi giữa service.
+**Giai đoạn 2:** ~~`inventory-service`~~, ~~`order-service`~~ (đã có: gọi đồng bộ qua `ServiceClientFactory`, đơn lưu snapshot giá). Đã thêm Resilience4j (circuit breaker + retry) trong `ServiceClientFactory`.
 
 **Giai đoạn 3:** thanh toán online (`payment-service`), chuyển từ gọi đồng bộ sang sự kiện (outbox + Kafka/RabbitMQ), `notification-service` (SMS/email, OTP).
